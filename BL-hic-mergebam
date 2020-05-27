@@ -1,0 +1,115 @@
+####this is 去接头和质控
+
+
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+
+cd /data/zhangyong/yyp/yypold/hic/hicdata
+
+
+
+source activate rna
+#去测序接头 质控
+for i in `ls *_R1.fq.gz`
+do
+i=${i/_R1.fq.gz/}
+trim_galore --phred33 -q 20 --length 36 --stringency 3 --fastqc --paired -o /data/zhangyong/yyp/yypold/hic/hicdata/trim ${i}_R1.fq.gz ${i}_R2.fq.gz
+
+done 
+
+####output：WT_DM_BL-HiC_Rep1_R1_val_1.fq.gz  要改名
+mv WT_DM_BL-HiC_Rep1_R1_val_1.fq.gz      .../.../.../.../csd1_R1.fq.gz
+
+
+##### 这是去桥接片段
+
+
+
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+
+
+
+
+source activate rna
+
+core=20
+BWA_File="/data/zhangyong/yyp/yypold/ref/mm10/mm10bwaindex/mm10.fa"
+RawData_Dir=/data/zhangyong/yyp/yypold/hic/csdata/hicdatacs/testrundir
+cd ${RawData_Dir}
+for var in */*_R1.fq.gz  
+do 
+i=${var%%/*}
+echo ${i}
+cd ${RawData_Dir}/${i}
+mkdir rawdata
+mkdir rawdata/${i}
+mkdir tmp 
+mkdir logs 
+mkdir bowtie_results
+mkdir bowtie_results/bwt2
+mkdir bowtie_results/bwt2/${i}
+##### step.1 trim linker   #####
+Input1=${i}_R1.fq.gz
+Input2=${i}_R2.fq.gz
+time /data/zhangyong/yyp/yypold/hic/hicpipe/ChIA-PET2/bin/trimLinker -A ACGCGATATCTTATC -B AGTCAGATAAGATAT -k 2 -m 1 -t $core  -e 1 -n ${i} -o rawdata/${i} ${Input1}  ${Input2}
+
+####output：：rawdata/csd1/csd1_1.valid.fastq   可以看出这里出来是fastq文件  前缀是_1.valid !!!config-hicpro.txt上要改对应的！
+
+##### step.2 map Hi-C data #####  软件安装问题，不推荐用bwa比对！这个比对一步到位？？？
+#time bwa mem -t $core ${BWA_File}  rawdata/${i}/${i}_1.valid.fastq |samtools view  -b -@ $core -h -F 2048 > bowtie_results/bwt2/${i}/${i}_1.valid_${genome}.bwt2merged.bam
+#time bwa mem -t $core ${BWA_File}  rawdata/${i}/${i}_2.valid.fastq |samtools view  -b -@ $core -h -F 2048 > bowtie_results/bwt2/${i}/${i}_2.valid_${genome}.bwt2merged.bam
+done 
+
+
+##目前所在是csd1文件夹。输入文件是rawdata/csd1/csd1_1.valid.fastq 
+
+
+
+1.Reads Mapping
+cat mapping_step1.log(2个bwt2glob.unmap.fastq，2个bwt2glob.bam)
+###mapping fastq to reference genome , 将unmapping的read 另存为 unmap.fastq
+../bowtie2 --very-sensitive -L 30 --score-min L,-0.6,-0.2 --end-to-end --reorder --un bowtie_results/bwt2_global/sample/csd1_R2_mm10.bwt2glob.unmap.fastq --rg-id BMG --rg SM:csd1_R2 -p 20 -x ...Index/mm10 -U rawdata/sample/csd1_R2.fastq.gz 2>> logs/sample/csd1_R2_bowtie2.log| sam.../samtools view -F 4 -bS - > bowtie_results/bwt2_global/sample/csd1_R2_mm10.bwt2glob.bam
+
+../bowtie2 --very-sensitive -L 30 --score-min L,-0.6,-0.2 --end-to-end --reorder --un bowtie_results/bwt2_global/sample/csd1_R1_mm10.bwt2glob.unmap.fastq --rg-id BMG --rg SM:csd1_R1 -p 20 -x ...Index/mm10 -U rawdata/sample/csd1_R1.fastq.gz 2>> logs/sample/csd1_R1_bowtie2.log| sam.../samtools view -F 4 -bS - > bowtie_results/bwt2_global/sample/csd1_R1_mm10.bwt2glob.bam
+
+
+2.片段分配和过滤
+cat mapping_step2.log
+### 酶切（trim，2个bwt2glob.unmap_trimmed.fastq）
+/PATH/TO/HiC-Pro/HiC-Pro_2.11.1/scripts/cutsite_trimming --fastq bowtie_results/bwt2_global/sample/csd1_R1_mm10.bwt2glob.unmap.fastq --cutsite AAGCTAGCTT --out bowtie_results/bwt2_local/sample/csd1_R1_mm10.bwt2glob.unmap_trimmed.fastq > logs/sample/csd1_R1_mm10.bwt2glob.unmap_readsTrimming.log 2>&1
+/PATH/TO/HiC-Pro/HiC-Pro_2.11.1/scripts/cutsite_trimming --fastq bowtie_results/bwt2_global/sample/csd1_R2_mm10.bwt2glob.unmap.fastq --cutsite AAGCTAGCTT --out bowtie_results/bwt2_local/sample/csd1_R2_mm10.bwt2glob.unmap_trimmed.fastq > logs/sample/csd1_R2_mm10.bwt2glob.unmap_readsTrimming.log 2>&1
+### 再用bowtie2 mapping一次（2个 bwt2glob.unmap_bwt2loc.bam）
+../bowtie2 --very-sensitive -L 20 --score-min L,-0.6,-0.2 --end-to-end --reorder --rg-id BML --rg SM:csd1_R1_mm10.bwt2glob.unmap -p 20 -x /PATH/TO/HiC-Pro/HiC-Pro_2.11.1/Bowtie2Index/mm10 -U bowtie_results/bwt2_local/sample/csd1_R1_mm10.bwt2glob.unmap_trimmed.fastq 2>> logs/sample/csd1_R1_mm10.bwt2glob.unmap_bowtie2.log | sam.../samtools view -bS - > bowtie_results/bwt2_local/sample/csd1_R1_mm10.bwt2glob.unmap_bwt2loc.bam
+../bowtie2 --very-sensitive -L 20 --score-min L,-0.6,-0.2 --end-to-end --reorder --rg-id BML --rg SM:csd1_R2_mm10.bwt2glob.unmap -p 20 -x /PATH/TO/HiC-Pro/HiC-Pro_2.11.1/Bowtie2Index/mm10 -U bowtie_results/bwt2_local/sample/csd1_R2_mm10.bwt2glob.unmap_trimmed.fastq 2>> logs/sample/csd1_R2_mm10.bwt2glob.unmap_bowtie2.log | sam.../samtools view -bS - > bowtie_results/bwt2_local/sample/csd1_R2_mm10.bwt2glob.unmap_bwt2loc.bam
+
+
+
+3、mapping_combine.log
+cat mapping_combine.log
+
+### 将global的bam与local的bam用samtools merge（2个bwt2merged.bam）
+sam.../samtools merge -@ 20 -n -f bowtie_results/bwt2/sample/csd1_R1_mm10.bwt2merged.bam bowtie_results/bwt2_global/sample/csd1_R1_mm10.bwt2glob.bam bowtie_results/bwt2_local/sample/csd1_R1_mm10.bwt2glob.unmap_bwt2loc.bam
+sam.../samtools merge -@ 20 -n -f bowtie_results/bwt2/sample/csd1_R2_mm10.bwt2merged.bam bowtie_results/bwt2_global/sample/csd1_R2_mm10.bwt2glob.bam bowtie_results/bwt2_local/sample/csd1_R2_mm10.bwt2glob.unmap_bwt2loc.bam
+
+### sort（2个bwt2merged.sorted.bam）
+sam.../samtools sort -@ 20 -n -T tmp/csd1_R2_mm10 -o bowtie_results/bwt2/sample/csd1_R2_mm10.bwt2merged.sorted.bam bowtie_results/bwt2/sample/csd1_R2_mm10.bwt2merged.bam
+sam.../samtools sort -@ 20 -n -T tmp/csd1_R1_mm10 -o bowtie_results/bwt2/sample/csd1_R1_mm10.bwt2merged.sorted.bam bowtie_results/bwt2/sample/csd1_R1_mm10.bwt2merged.bam
+
+[bam_sort_core] merging from 0 files and 20 in-memory blocks...
+[bam_sort_core] merging from 0 files and 20 in-memory blocks...
+
+### 改名（bwt2merged.bam）
+mv bowtie_results/bwt2/sample/csd1_R1_mm10.bwt2merged.sorted.bam bowtie_results/bwt2/sample/csd1_R1_mm10.bwt2merged.bam
+mv bowtie_results/bwt2/sample/csd1_R2_mm10.bwt2merged.sorted.bam bowtie_results/bwt2/sample/csd1_R2_mm10.bwt2merged.bam
+
+
+
+
+
