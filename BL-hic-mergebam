@@ -110,6 +110,12 @@ mv bowtie_results/bwt2/sample/csd1_R1_mm10.bwt2merged.sorted.bam bowtie_results/
 mv bowtie_results/bwt2/sample/csd1_R2_mm10.bwt2merged.sorted.bam bowtie_results/bwt2/sample/csd1_R2_mm10.bwt2merged.bam
 
 
+
+【第三个bam输入，缺少这个步骤了，这步创建hic_results！ 与第五步有关系！/data/zhangyong/miniconda3/envs/rna/bin/python /data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/scripts/mapped_2hic_fragments.py -v -S -t 100 -m 100000 -s 100 -l 600 -a -f /data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/annotation/HindIII_resfrag_hg19.bed -r bowtie_results/bwt2/test_run/SRR400264_00_hg19.bwt2pairs.bam -o hic_results/data/test_run
+## overlapMapped2HiCFragments.py
+
+ 总结valid.bam文件输入三部走1mapped_2hic_fragments.log 2mergeSAM.log 3merge_valid_interactions.log
+】
 4、merge
 
 ### 将R1与R2 merge为一个文件。【bwt2pairs.bam】
@@ -233,7 +239,7 @@ cd /data/zhangyong/yyp/yypold/hic/csdata/test_run
 
 cp hicpro_output/hic_results/data/test_run/SRR400264_00_hg19.bwt2pairs.validPairs  hicpro_output/hic_results/data/test_run/SRR400264.allValidPairs
 。。。。
-分步总代码
+####也是成功的分步总代码  step.sh
 #!/bin/bash                 
 #
 #$ -cwd                     
@@ -260,3 +266,42 @@ cd /data/zhangyong/yyp/yypold/hic/csdata/test_run
 
 ####完成
 
+。。。。。。
+成功的bam文件三部走 all.sh 【第三个bam文件输入 ： bwt2pairs.bam】
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+
+BWA_File="/data/zhangyong/yyp/yypold/ref/mm10/mm10bwaindex/mm10.fa"
+Resolution=5000
+genome=mm10
+core=20
+RawData_Dir=/data/zhangyong/yyp/yypold/hic/csdata/hicdatacs/testrundir
+Scriptpath=/data/zhangyong/yyp/yypold/hic/hicpipe/hicpipe
+JUICER=/data/zhangyong/juicer/scripts/common
+Chromosome_File="/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/annotation/chrom_mm10.sizes"
+Insulation=/data/zhangyong/yyp/yypold/hic/hicpipe/in_cworld/scripts/perl/matrix2insulation.pl 
+
+####RawData_Dir=/data/zhangyong/yyp/yypold/hic/csdata/csd11.1
+i=csd11.1
+source activate rna
+
+
+
+cd /data/zhangyong/yyp/yypold/hic/csdata/hicdatacs/testrundir/csd11.1/
+##mkdir -p hic_results/data/csd11.1
+##/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/scripts/mapped_2hic_fragments.py -v -S -t 100 -m 100000 -s 100 -l 600 -a -f /data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/annotation/mm10haiii.bed -r /data/zhangyong/yyp/yypold/hic/csdata/hicdatacs/testrundir/csd11/bowtie_results/bwt2/csd1/csd1_.bwt2pairs.bam -o hic_results/data/csd11.1
+
+
+
+## overlapMapped2HiCFragments.py
+## Sorting valid interaction file ...
+LANG=en; sort -T tmp -k2,2V -k3,3n -k5,5V -k6,6n -o hic_results/data/csd11.1/csd1_.bwt2pairs.validPairs hic_results/data/csd11.1/csd1_.bwt2pairs.validPairs
+## Merge valid interactions for csd11.1 - bam - hic_results/data/...
+## Remove duplicates ...
+LANG=en; sort -T tmp -S 50% -k2,2V -k3,3n -k5,5V -k6,6n -m hic_results/data/csd11.1/csd1_.bwt2pairs.validPairs | awk -F"\t" 'BEGIN{c1=0;c2=0;s1=0;s2=0}(c1!=$2 || c2!=$5 || s1!=$3 || s2!=$6){print;c1=$2;c2=$5;s1=$3;s2=$6}' > hic_results/data/csd11.1/csd1_.allValidPairs
+
+
+###三部走完成
