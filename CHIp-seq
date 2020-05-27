@@ -1,0 +1,380 @@
+#trim
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+export PATH=$PATH:~/miniconda3/envs/rna/bin
+cd /data/zhangyong/yyp/yypold/bio/lh
+
+analysis_dir=/data/zhangyong/yyp/yypold/bio/lh
+
+ls *gz | while read id;
+do 
+ ~/miniconda3/envs/rna/bin/trim_galore -q 25 --phred33 --length 25 -e 0.1 --stringency 4 -o $analysis_dir/clean  $id; 
+
+done 
+
+
+##qc
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+cd /data/zhangyong/yyp/yypold/bio/lh/qc
+
+###ls ../raw/SRRN/a/*gz|xargs ~/miniconda3/envs/rna/bin/fastqc -t 10 -o  /data/zhangyong/yyp/yypold/bio/bedtools/qc
+ls ../clean/*gz|xargs ~/miniconda3/envs/rna/bin/fastqc -t 10 -o  /data/zhangyong/yyp/yypold/bio/lh/qc
+
+
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+cd /data/zhangyong/yyp/yypold/bio/lh/align/qita
+bin_bowtie2=~/miniconda3/envs/rna/bin/bowtie2
+
+bowtie2_index=/data/zhangyong/yyp/yypold/ref/mm10/mm10bowtie2index/mm10
+
+export PATH=$PATH:~/miniconda3/envs/rna/bin
+
+
+ls ../../clean/*gz |while read id; 
+do
+file=$(basename $id ); sample=${file%%.*}; echo $file $sample; 
+$bin_bowtie2  -p 5  -x  $bowtie2_index -U  $id | samtools sort  -O bam  -@ 5 -o - > ${sample}.bam 
+done 
+
+
+
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+cd /data/zhangyong/yyp/yypold/bio/lh/align
+export PATH=$PATH:~/miniconda3/envs/rna/bin
+ls  *.bam  |xargs -i samtools index {} 
+ls  *.bam  | while read id ;do (samtools flagstat $id > $(basename $id ".bam").stat);done
+
+
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+export PATH=$PATH:~/miniconda3/envs/rna/bin
+
+
+cd /data/zhangyong/yyp/yypold/bio/lh/ali
+ls  *.bam  | while read id ;do (samtools markdup -r $id $(basename $id ".bam").rmdup.bam);done
+ls  *.rmdup.bam  |xargs -i samtools index {} 
+ls  *.rmdup.bam  | while read id ;do (samtools flagstat $id > $(basename $id ".bam").stat);done
+
+
+
+
+#tobw
+
+
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+export PATH=$PATH:~/miniconda3/envs/rna/bin
+cd  /data/zhangyong/yyp/yypold/bio/lh/ali/DM 
+
+ls  *.bam  |xargs -i samtools index {} 
+ls *.bam |while read id;do
+bamCoverage --normalizeUsing RPKM -b $id -o ${id%%.*}.bw 
+done 
+
+cd dup 
+ls  *.bam  |xargs -i samtools index {} 
+ls *.bam |while read id;do
+bamCoverage --normalizeUsing RPKM -b $id -o ${id%%.*}.rm.bw 
+done 
+
+
+
+##dmcall
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+export PATH=$PATH:~/miniconda3/envs/rna/bin
+
+cd /data/zhangyong/yyp/yypold/bio/lh/ali/DM
+
+
+ls  *d.bam |cut -d"." -f 1 |while read id;
+do 
+    if [ ! -s ${id}_summits.bed ];
+    then 
+echo $id 
+macs2 callpeak -c   WT_DM_TF_input_ChIPseq_trimmed.bam -t $id.bam -f BAM -B -g mm -n $id --outdir ../../peaks  2> $id.log  
+    fi 
+done  
+
+
+
+
+
+mkdir dup
+mv *rmdup* dup/
+cd dup/
+
+ls  *.rmdup.bam |cut -d"." -f 1 |while read id;
+do 
+    if [ ! -s ${id}_rmdup_summits.bed ];
+    then 
+echo $id 
+macs2 callpeak -c  WT_DM_TF_input_ChIPseq_trimmed.rmdup.bam  -t $id.rmdup.bam  -f BAM -B -g mm -n ${id}_rmdup --outdir  ../../../peaks 2> $id.log  
+    fi 
+done  
+
+
+#dm2k
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+export PATH=$PATH:~/miniconda3/envs/rna/bin
+
+cd /data/zhangyong/yyp/yypold/bio/lh/ali/DM
+bed=/data/zhangyong/yyp/yypold/bio/bedtools/rf/ucsc.refseq.bed
+
+for id in  /data/zhangyong/yyp/yypold/bio/lh/ali/DM/*.bw ;
+do 
+echo $id
+file=$(basename $id )
+sample=${file%%.*} 
+echo $sample 
+
+computeMatrix reference-point  --referencePoint TSS  -p 15  \
+-b 2000 -a 2000    \
+-R  $bed \
+-S $id  \
+--skipZeros  -o matrix1_${sample}_TSS_2K.gz  \
+--outFileSortedRegions regions1_${sample}_TSS_2K.bed
+
+##     both plotHeatmap and plotProfile will use the output from   computeMatrix
+plotHeatmap -m matrix1_${sample}_TSS_2K.gz  -out ${sample}_Heatmap_2K.png
+plotHeatmap -m matrix1_${sample}_TSS_2K.gz  -out ${sample}_Heatmap_2K.pdf --plotFileFormat pdf  --dpi 720  
+plotProfile -m matrix1_${sample}_TSS_2K.gz  -out ${sample}_Profile_2K.png
+plotProfile -m matrix1_${sample}_TSS_2K.gz  -out ${sample}_Profile_2K.pdf --plotFileFormat pdf --perGroup --dpi 720 
+
+done 
+
+cd dup
+bed=/data/zhangyong/yyp/yypold/bio/bedtools/rf/ucsc.refseq.bed
+for id in  /data/zhangyong/yyp/yypold/bio/lh/ali/DM/dup/*.bw ;
+do 
+echo $id
+file=$(basename $id )
+sample=${file%%.*} 
+echo $sample 
+
+computeMatrix reference-point  --referencePoint TSS  -p 15  \
+-b 2000 -a 2000    \
+-R  $bed \
+-S $id  \
+--skipZeros  -o matrix1_${sample}_TSS_2K.gz  \
+--outFileSortedRegions regions1_${sample}_TSS_2K.bed
+
+##     both plotHeatmap and plotProfile will use the output from   computeMatrix
+plotHeatmap -m matrix1_${sample}_TSS_2K.gz  -out ${sample}_Heatmap_2K.png
+plotHeatmap -m matrix1_${sample}_TSS_2K.gz  -out ${sample}_Heatmap_2K.pdf --plotFileFormat pdf  --dpi 720  
+plotProfile -m matrix1_${sample}_TSS_2K.gz  -out ${sample}_Profile_2K.png
+plotProfile -m matrix1_${sample}_TSS_2K.gz  -out ${sample}_Profile_2K.pdf --plotFileFormat pdf --perGroup --dpi 720 
+
+done 
+
+#dm10k
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+export PATH=$PATH:~/miniconda3/envs/rna/bin
+
+cd /data/zhangyong/yyp/yypold/bio/lh/ali/DM
+bed=/data/zhangyong/yyp/yypold/bio/bedtools/rf/ucsc.refseq.bed
+for id in  /data/zhangyong/yyp/yypold/bio/lh/ali/DM/*.bw ;
+do 
+echo $id
+file=$(basename $id )
+sample=${file%%.*} 
+echo $sample  
+
+computeMatrix reference-point  --referencePoint TSS  -p 15  \
+-b 10000 -a 10000    \
+-R  $bed \
+-S $id  \
+--skipZeros  -o matrix1_${sample}_TSS_10K.gz  \
+--outFileSortedRegions regions1_${sample}_TSS_10K.bed
+
+
+
+##     both plotHeatmap and plotProfile will use the output from   computeMatrix
+plotHeatmap -m matrix1_${sample}_TSS_10K.gz  -out ${sample}_Heatmap_10K.png
+plotHeatmap -m matrix1_${sample}_TSS_10K.gz  -out ${sample}_Heatmap_10K.pdf --plotFileFormat pdf  --dpi 720  
+plotProfile -m matrix1_${sample}_TSS_10K.gz  -out ${sample}_Profile_10K.png
+plotProfile -m matrix1_${sample}_TSS_10K.gz  -out ${sample}_Profile_10K.pdf --plotFileFormat pdf --perGroup --dpi 720 
+
+done 
+
+cd dup
+bed=/data/zhangyong/yyp/yypold/bio/bedtools/rf/ucsc.refseq.bed
+for id in  /data/zhangyong/yyp/yypold/bio/lh/ali/DM/dup/*.bw ;
+do 
+echo $id
+file=$(basename $id )
+sample=${file%%.*} 
+echo $sample  
+
+computeMatrix reference-point  --referencePoint TSS  -p 15  \
+-b 10000 -a 10000    \
+-R  $bed \
+-S $id  \
+--skipZeros  -o matrix1_${sample}_TSS_10K.gz  \
+--outFileSortedRegions regions1_${sample}_TSS_10K.bed
+
+
+
+##     both plotHeatmap and plotProfile will use the output from   computeMatrix
+plotHeatmap -m matrix1_${sample}_TSS_10K.gz  -out ${sample}_Heatmap_10K.png
+plotHeatmap -m matrix1_${sample}_TSS_10K.gz  -out ${sample}_Heatmap_10K.pdf --plotFileFormat pdf  --dpi 720  
+plotProfile -m matrix1_${sample}_TSS_10K.gz  -out ${sample}_Profile_10K.png
+plotProfile -m matrix1_${sample}_TSS_10K.gz  -out ${sample}_Profile_10K.pdf --plotFileFormat pdf --perGroup --dpi 720 
+
+done 
+
+#dmbody
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+export PATH=$PATH:~/miniconda3/envs/rna/bin
+
+cd /data/zhangyong/yyp/yypold/bio/lh/ali/DM
+bed=/data/zhangyong/yyp/yypold/bio/bedtools/rf/ucsc.refseq.bed
+
+for id in  /data/zhangyong/yyp/yypold/bio/lh/ali/DM/*.bw ;
+do 
+echo $id
+file=$(basename $id )
+sample=${file%%.*} 
+echo $sample 
+
+computeMatrix scale-regions  -p 5  \
+-b 3000 -a 3000    \
+-R  $bed \
+-S $id  \
+--regionBodyLength 15000 --skipZeros \
+-o matrix1_${sample}_genebody.gz  \
+--outFileSortedRegions regions1_${sample}_genebody.bed
+
+##     both plotHeatmap and plotProfile will use the output from   computeMatrix
+plotHeatmap -m matrix1_${sample}_genebody.gz  -out ${sample}_Heatmap_genebody.png
+plotHeatmap -m matrix1_${sample}_genebody.gz  -out ${sample}_Heatmap_genebody.pdf --plotFileFormat pdf  --dpi 720  
+plotProfile -m matrix1_${sample}_genebody.gz  -out ${sample}_Profile_genebody.png
+plotProfile -m matrix1_${sample}_genebody.gz  -out ${sample}_Profile_genebody.pdf --plotFileFormat pdf --perGroup --dpi 720 
+
+done 
+
+cd dup
+bed=/data/zhangyong/yyp/yypold/bio/bedtools/rf/ucsc.refseq.bed
+for id in  /data/zhangyong/yyp/yypold/bio/lh/ali/DM/dup/*.bw ;
+do 
+echo $id
+file=$(basename $id )
+sample=${file%%.*} 
+echo $sample 
+
+computeMatrix scale-regions  -p 5  \
+-b 3000 -a 3000    \
+-R  $bed \
+-S $id  \
+--regionBodyLength 15000 --skipZeros \
+-o matrix1_${sample}_genebody.gz  \
+--outFileSortedRegions regions1_${sample}_genebody.bed
+
+##     both plotHeatmap and plotProfile will use the output from   computeMatrix
+plotHeatmap -m matrix1_${sample}_genebody.gz  -out ${sample}_Heatmap_genebody.png
+plotHeatmap -m matrix1_${sample}_genebody.gz  -out ${sample}_Heatmap_genebody.pdf --plotFileFormat pdf  --dpi 720  
+plotProfile -m matrix1_${sample}_genebody.gz  -out ${sample}_Profile_genebody.png
+plotProfile -m matrix1_${sample}_genebody.gz  -out ${sample}_Profile_genebody.pdf --plotFileFormat pdf --perGroup --dpi 720 
+
+done 
+
+##
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+export PATH=$PATH:~/miniconda3/envs/rna/bin
+
+cd  /data/zhangyong/yyp/yypold/bio/lh/motif
+for id in /data/zhangyong/yyp/yypold/bio/lh/peaks/sbed/*narrowPeak;
+do
+echo $id
+file=$(basename $id )
+sample=${file%%.*} 
+echo $sample  
+awk '{print $4"\t"$1"\t"$2"\t"$3"\t+"}' $id >homer_peaks.tmp  
+findMotifsGenome.pl homer_peaks.tmp mm10 ${sample}_motifDir -len 8,10,12
+annotatePeaks.pl    homer_peaks.tmp mm10  1>${sample}.peakAnn.xls 2>${sample}.annLog.txt 
+done 
+
+
+##
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+export PATH=$PATH:~/miniconda3/envs/rna/bin
+
+cd  /data/zhangyong/yyp/yypold/bio/lh/motif
+for id in /data/zhangyong/yyp/yypold/bio/lh/peaks/sbed/*summits.bed;
+do
+echo $id
+file=$(basename $id )
+sample=${file%%.*} 
+echo $sample  
+awk '{print $4"\t"$1"\t"$2"\t"$3"\t+"}' $id >homer_peaks.tmp  
+findMotifsGenome.pl homer_peaks.tmp mm10 ${sample}_motifDir -len 8,10,12
+annotatePeaks.pl    homer_peaks.tmp mm10  1>${sample}.peakAnn.xls 2>${sample}.annLog.txt 
+done 
+##
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+export PATH=$PATH:~/miniconda3/envs/rna/bin
+
+cd  /data/zhangyong/yyp/yypold/bio/lh/motif
+for id in /data/zhangyong/yyp/yypold/bio/lh/peaks/sbed/WT_DM_MyoD_ChIPseq_Rep1_trimmed_rmdup_summits.bed;
+do
+echo $id > id
+file=$(basename $id )
+sample=${file%%.*} 
+echo $sample >sample  
+
+awk '{print $4"\t"$1"\t"$2"\t"$3"\t+"}' $id  
+
+#findMotifsGenome.pl homer_peaks.tmp mm10 ${sample}_motifDir -len 8,10,12
+#annotatePeaks.pl    homer_peaks.tmp mm10  1>${sample}.peakAnn.xls 2>${sample}.annLog.txt 
+done 
+###
+/data/zhangyong/yyp/yypold/bio/lh/peaks/sbed/WT_DM_MyoD_ChIPseq_Rep1_trimmed_rmdup_summits.bed
+###
