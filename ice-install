@@ -1,0 +1,1 @@
+pip install iced-master.zip --upgrade --ignore-installed iced
