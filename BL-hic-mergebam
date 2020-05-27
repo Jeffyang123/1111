@@ -233,3 +233,30 @@ cd /data/zhangyong/yyp/yypold/hic/csdata/test_run
 
 cp hicpro_output/hic_results/data/test_run/SRR400264_00_hg19.bwt2pairs.validPairs  hicpro_output/hic_results/data/test_run/SRR400264.allValidPairs
 。。。。
+分步总代码
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+
+
+
+
+source activate rna
+
+
+cd /data/zhangyong/yyp/yypold/hic/csdata/test_run
+
+#/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/bin/HiC-Pro -i rawdata -o hicpro_output -c config-hicpro.txt -s mapping
+
+##bwt2:R12
+#/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/bin/HiC-Pro -i hicpro_output/bowtie_results/bwt2/ -o hicpro_output/ -c config-hicpro.txt -s proc_hic
+#step3
+#/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/bin/HiC-Pro -i hicpro_output/hic_results/data/ -o hicpro_output/ -c config-hicpro.txt -s quality_checks
+
+
+#cp hicpro_output/hic_results/data/test_run/SRR400264_00_hg19.bwt2pairs.validPairs  hicpro_output/hic_results/data/test_run/SRR400264.allValidPairs
+
+####完成
+
