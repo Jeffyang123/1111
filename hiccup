@@ -1,0 +1,19 @@
+
+
+hiccups --cpu [--threads num_threads] [-m matrixSize] [-c chromosome(s)] [-r resolution(s)] 
+		<HiC file> <outputDirectory> 
+    
+  
+hiccups --restrict [-m matrixSize] [-c chromosome(s)] [-r resolution(s)]
+                <HiC file> <outputDirectory>
+                
+                
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+source acitvate rna
+
+hiccups --cpu [--threads num_threads] [-m matrixSize] [-c chromosome(s)] [-r resolution(s)] 
+		<HiC file> <outputDirectory> 
