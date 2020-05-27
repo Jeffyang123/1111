@@ -110,6 +110,126 @@ mv bowtie_results/bwt2/sample/csd1_R1_mm10.bwt2merged.sorted.bam bowtie_results/
 mv bowtie_results/bwt2/sample/csd1_R2_mm10.bwt2merged.sorted.bam bowtie_results/bwt2/sample/csd1_R2_mm10.bwt2merged.bam
 
 
+4、merge
+
+### 将R1与R2 merge为一个文件。【bwt2pairs.bam】
+cat mergeSAM.log
+/PATH/TO/python/python-2.7.10/bin/python /PATH/TO/HiC-Pro/HiC-Pro_2.11.1/scripts/mergeSAM.py -q 0 -t -v -f bowtie_results/bwt2/dixon_2M/SRR400264_00_R1_hg19.bwt2merged.bam -r bowtie_results/bwt2/dixon_2M/SRR400264_00_R2_hg19.bwt2merged.bam -o bowtie_results/bwt2/dixon_2M/SRR400264_00_hg19.bwt2pairs.bam
+## mergeBAM.py
+
+
+5、利用HiCPro的mapped_2hic_fragments.py程序将比对结果转化为Hi-C片段信息【创建：hic_results/data/，事实不是第五步创建的hic_results.第四第五步连接不上】
+
+cat mapped_2hic_fragments.log
+/PATH/TO/python /PATH/TO/HiC-Pro/HiC-Pro_2.11.1/scripts/mapped_2hic_fragments.py -v -S -t 100 -m 100000 -s 100 -l 600 -a -f /PATH/TO/HiC-Pro_2.11.1/annotation/HindIII_resfrag_hg19.bed -r bowtie_results/bwt2/dixon_2M/SRR400264_00_hg19.bwt2pairs.bam -o hic_results/data/dixon_2M
+## overlapMapped2HiCFragments.py
+验证一个命令失败：【可见hic_results在第五步之前已经创建而且 带有bwt2pairs.validPairs文件。。切记，这种调用 是输出和生成的文件夹不一样的。把报错的文件改成输入文件夹】
+##验证一个创建hic_results的步骤。cat mapped_2hic_fragments.log
+/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/scripts/mapped_2hic_fragments.py -v -S -t 100 -m 100000 -s 100 -l 600 -a -f /data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/annotation/HindIII_resfrag_hg19.bed -r bowtie_results/bwt2/test_run/SRR400264_00_hg19.bwt2pairs.bam -o hic_results/data/testrun
+
+Traceback (most recent call last):
+  File "/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/scripts/mapped_2hic_fragments.py", line 564, in <module>
+    handle_valid = open(outputDir + '/' + baseReadsFile + '.validPairs', 'w')
+IOError: [Errno 2] No such file or directory: 'hic_results/data/testrun/SRR400264_00_hg19.bwt2pairs.validPairs'
+
+
+。。。。。。。。
+下面是分步运行的
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
 
 
 
+
+source activate rna
+
+
+cd /data/zhangyong/yyp/yypold/hic/csdata/test_run
+
+#/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/bin/HiC-Pro -i rawdata -o hicpro_output -c config-hicpro.txt -s mapping
+第一步输出：2个文件，_R1_hg19.bwt2merged.bam
+Run HiC-Pro 2.11.4
+--------------------------------------------
+Wed May 27 19:06:13 CST 2020
+Bowtie2 alignment step1 ...
+Logs: logs/test_run/mapping_step1.log
+
+--------------------------------------------
+Wed May 27 19:07:12 CST 2020
+Bowtie2 alignment step2 ...
+Logs: logs/test_run/mapping_step2.log
+
+--------------------------------------------
+Wed May 27 19:07:17 CST 2020
+Combine R1/R2 alignment files ...
+Logs: logs/test_run/mapping_combine.log
+
+--------------------------------------------
+Wed May 27 19:07:19 CST 2020
+Mapping statistics for R1 and R2 tags ...
+Logs: logs/test_run/mapping_stats.log
+
+第二步
+/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/bin/HiC-Pro -i hicpro_output/bowtie_results/bwt2/ -o hicpro_output/ -c config-hicpro.txt -s proc_hic
+
+第二步输出：创建hic_result，也在bwt输出一个文件：.bwt2pairs.bam
+Run HiC-Pro 2.11.4
+--------------------------------------------
+Wed May 27 19:10:48 CST 2020
+Pairing of R1 and R2 tags ...
+Logs: logs/test_run/mergeSAM.log
+
+--------------------------------------------
+Wed May 27 19:11:10 CST 2020
+Assign alignments to restriction fragments ...
+Logs: logs/test_run/mapped_2hic_fragments.log
+
+
+。。。
+###step3 在hic_results 生成pic 质控文件
+#step3
+#/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/bin/HiC-Pro -i hicpro_output/hic_results/data/ -o hicpro_output/ -c config-hicpro.txt -s quality_checks
+
+
+Run HiC-Pro 2.11.4
+--------------------------------------------
+Wed May 27 19:23:28 CST 2020
+Run quality checks for all samples ...
+Logs: logs/test_run/make_Rplots.log
+
+
+#step4
+
+cp hicpro_output/hic_results/data/test_run/SRR400264_00_hg19.bwt2pairs.validPairs  hicpro_output/hic_results/data/test_run/SRR400264.allValidPairs
+
+......
+
+# from R1 R2 _1valid _2valid 生成 allvalidpairs 的代码
+
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+
+
+
+
+source activate rna
+
+
+cd /data/zhangyong/yyp/yypold/hic/csdata/test_run
+
+#/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/bin/HiC-Pro -i rawdata -o hicpro_output -c config-hicpro.txt -s mapping
+
+##bwt2:R12
+#/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/bin/HiC-Pro -i hicpro_output/bowtie_results/bwt2/ -o hicpro_output/ -c config-hicpro.txt -s proc_hic
+#step3
+#/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/bin/HiC-Pro -i hicpro_output/hic_results/data/ -o hicpro_output/ -c config-hicpro.txt -s quality_checks
+
+
+cp hicpro_output/hic_results/data/test_run/SRR400264_00_hg19.bwt2pairs.validPairs  hicpro_output/hic_results/data/test_run/SRR400264.allValidPairs
+。。。。
