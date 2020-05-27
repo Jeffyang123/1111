@@ -1,0 +1,435 @@
+####hicprotojuicerbox.hic
+
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+
+
+
+
+
+smaplename=test_run
+inp=/data/zhangyong/yyp/yypold/hic/csdata/hicdatacs/testrundir/csd11.1/hic_results/data/csd11.1/csd1_.allValidPairs
+
+chrsize=mm10
+
+fragmentfile=/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/annotation/mm10haiii.bed
+/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/bin/utils/hicpro2juicebox.sh -i $inp -g $chrsize -j /data/zhangyong/juicer/scripts/common/juicer_tools.jar [-r /data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/annotation/mm10haiii.bed] -o ./
+
+
+###hicprodump  生成bw文件
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+
+
+
+
+source activate rna
+
+
+
+
+
+BWA_File="/data/zhangyong/yyp/yypold/ref/mm10/mm10bwaindex/mm10.fa"
+Resolution=5000
+genome=mm10
+core=20
+###RawData_Dir=/data/zhangyong/yyp/yypold/hic/csdata/hicdatacs/testrundir
+Scriptpath=/data/zhangyong/yyp/yypold/hic/hicpipe/hicpipe
+JUICER=/data/zhangyong/juicer/scripts/common
+Chromosome_File="/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/annotation/chrom_mm10.sizes"
+Insulation=/data/zhangyong/yyp/yypold/hic/hicpipe/in_cworld/scripts/perl/matrix2insulation.pl 
+
+
+
+
+
+RawData_Dir=/data/zhangyong/yyp/yypold/hic/csdata/hicdatacs/testrundir
+i=csd11.1
+
+cd ${RawData_Dir}/${i}
+echo "${RawData_Dir}/${i}:"
+echo  ${RawData_Dir}/${i}
+##mkdir hicfile
+##mkdir TAD
+##mkdir CDB
+##mkdir compartment
+##mkdir maps
+##mkdir Loops
+##mkdir -p hic_results/data/${i}
+
+
+nchrom=$(cat $Chromosome_File|sed  '/_/d'|sed '/chrM/d'|sed '/chrY/d'|sort -k1,1 -V -s|cut -f2|wc -l )
+mkdir hmaps
+mkdir hcompartment
+echo $genome
+echo $nchrom
+#### step.3 extract data  #####
+for j in $(eval echo "{1..$[nchrom-1]}")
+do
+echo $j
+java -jar ${JUICER}/juicer_tools.jar  dump observed NONE hic_results/data/csd11.1/tohic/csd1_.allValidPairs.hic  ${j} ${j}  BP $Resolution  hmaps/chr${j}.matrix
+done
+java -jar ${JUICER}/juicer_tools.jar  dump observed NONE hic_results/data/csd11.1/tohic/csd1_.allValidPairs.hic  X  X  BP $Resolution  hmaps/chr${nchrom}.matrix
+
+##### step.4 compartment  #####
+for j in $(eval echo "{1..$[nchrom-1]}")
+do
+java -jar  ${JUICER}/juicer_tools.jar  eigenvector -p KR hic_results/data/csd11.1/tohic/csd1_.allValidPairs.hic  ${j} BP 100000 hcompartment/csd11.1_chr${j}_pc1_100k.txt
+done
+java -jar  ${JUICER}/juicer_tools.jar  eigenvector -p KR hic_results/data/csd11.1/tohic/csd1_.allValidPairs.hic  X BP 100000  hcompartment/csd11.1_chr${j}_pc1_100k.txt
+
+
+
+
+
+cd hcompartment
+#Rscript  ${Scriptpath}/calcuchrX_comp.r $2
+Rscript ${Scriptpath}/compartment.r csd11.1_ mm10
+cp csd11.1_pc1.bdg csd11.1_pc1_ori.bdg
+sed -i '/NA/d' csd11.1_pc1.bdg
+sort -k1,1 -k2,2n csd11.1_pc1.bdg >csd11.1_pc1.bdg.sort
+bedGraphToBigWig csd11.1_pc1.bdg.sort   ${Chromosome_File}  hcsd11.1_pc1.bw
+rm csd11.1_pc1.bdg.sort csd11.1_pc1.bdg
+cd ../
+cp  hcompartment/hcsd11.1_pc1.bw  ${RawData_Dir}/all_results/
+
+
+
+
+###hicproinsulation  生成bed文件
+
+
+
+
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+
+
+
+
+source activate rna
+
+
+
+hicc=/data/zhangyong/yyp/yypold/hic/csdata/hicdatacs/testrundir/csd11.1/hic_results/data/csd11.1/tohic/csd1_.allValidPairs.hic
+
+BWA_File="/data/zhangyong/yyp/yypold/ref/mm10/mm10bwaindex/mm10.fa"
+Resolution=5000
+genome=mm10
+core=20
+###RawData_Dir=/data/zhangyong/yyp/yypold/hic/csdata/hicdatacs/testrundir
+Scriptpath=/data/zhangyong/yyp/yypold/hic/hicpipe/hicpipe
+JUICER=/data/zhangyong/juicer/scripts/common
+Chromosome_File="/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/annotation/chrom_mm10.sizes"
+Insulation=/data/zhangyong/yyp/yypold/hic/hicpipe/in_cworld/scripts/perl/matrix2insulation.pl 
+
+
+
+
+
+RawData_Dir=/data/zhangyong/yyp/yypold/hic/csdata/hicdatacs/testrundir
+i=csd11.1
+
+cd ${RawData_Dir}/${i}
+echo "${RawData_Dir}/${i}:"
+echo  ${RawData_Dir}/${i}
+##mkdir hicfile
+##mkdir hTAD
+##mkdir CDB
+##mkdir compartment
+##mkdir maps
+##mkdir Loops
+##mkdir -p hic_results/data/${i}
+
+
+nchrom=$(cat $Chromosome_File|sed  '/_/d'|sed '/chrM/d'|sed '/chrY/d'|sort -k1,1 -V -s|cut -f2|wc -l )
+#mkdir hTAD
+
+echo $genome
+echo $nchrom
+
+
+
+#for j in $(eval echo "{1..$[nchrom-1]}")
+#do
+#java -jar ${JUICER}/juicer_tools.jar  dump -d observed KR $hicc  ${j} ${j}   BP 50000  hTAD/KRchr${j}
+#done
+#java -jar ${JUICER}/juicer_tools.jar  dump -d observed KR $hicc X  X BP 50000  hTAD/KRchr${nchrom}
+
+cd hTAD
+#for j in $(eval echo "{1..$nchrom}")
+#do
+#nrow=$(head -n 1 KRchr${j} |awk '{print NF}')
+#Rscript ${Scriptpath}/insu_header1.r  ${j} ${nrow} 40000 
+#cat header KRchr${j} >KRchr${j}.tmp
+#paste header2 KRchr${j}.tmp > KRchr${j}.matrix
+#time perl $Insulation -i KRchr${j}.matrix  --is 1000000 --ids 200000 --im mean  --nt 0.1 -v
+
+#rm KRchr${j} KRchr${j}.tmp
+#done
+
+for i in $(eval echo "{1..$nchrom}")
+do 
+awk '{printf("%s\t%d\t%d\t%0.8f\n",$1,$2,$3,$5)}'  KRchr${i}--is1000001--nt0.1--ids240001--ss1--immean.insulation.boundaries.bed >> csd11.1_hTAD.bed
+
+done
+
+
+
+
+sed -i "s/chr${nchrom}/chrX/g" csd11.1_hTAD.bed
+sort -k1,1 -k2,2n -u csd11.1_hTAD.bed>csd11.1_hTAD.sort.bed
+cd ..
+cp hTAD/csd11.1_hTAD.sort.bed   ${RawData_Dir}/all_results/
+
+
+
+。。。。。
+###pre生成hic
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+
+
+
+
+source activate rna
+
+
+
+
+
+BWA_File="/data/zhangyong/yyp/yypold/ref/mm10/mm10bwaindex/mm10.fa"
+Resolution=5000
+genome=mm10
+core=20
+###RawData_Dir=/data/zhangyong/yyp/yypold/hic/csdata/hicdatacs/testrundir
+Scriptpath=/data/zhangyong/yyp/yypold/hic/hicpipe/hicpipe
+JUICER=/data/zhangyong/juicer/scripts/common
+Chromosome_File="/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/annotation/chrom_mm10.sizes"
+Insulation=/data/zhangyong/yyp/yypold/hic/hicpipe/in_cworld/scripts/perl/matrix2insulation.pl 
+
+
+
+
+
+RawData_Dir=/data/zhangyong/yyp/yypold/hic/csdata/hicdatacs/testrundir
+i=csd11.1
+
+cd ${RawData_Dir}/${i}
+echo "${RawData_Dir}/${i}:"
+echo  ${RawData_Dir}/${i}
+##mkdir hicfile
+##mkdir TAD
+##mkdir CDB
+##mkdir compartment
+##mkdir maps
+##mkdir Loops
+##mkdir -p hic_results/data/${i}
+
+mkdir hicfile
+
+
+
+
+
+#time awk '{chr1=substr($2,4);chr2=substr($5,4);if(chr1>chr2){print $1,$7,chr2,$6,1,$4,chr1,$3,0,$12,$11}else{print $1,$4,chr1,$3,0,$7,chr2,$6,1,$11,$12}}' hic_results/data/csd11.1/csd1_.allValidPairs >hic_results/data/csd11.1/csd11.1_tmp
+
+##check the sort!
+##sort -k3,3d -k7,7d --parallel=8 hic_results/data/${i}/${i}_tmp > hicfile/${i}.txt 
+sort -k3,3d -k7,7d hic_results/data/${i}/${i}_tmp > hicfile/${i}.txt 
+
+
+
+sed -i 's/+/0/g'  hicfile/${i}.txt
+sed -i 's/-/16/g'  hicfile/${i}.txt
+time java -jar ${JUICER}/juicer_tools.jar pre -r 500000,250000,100000,50000,40000,25000,20000,10000,5000,1000 hicfile/${i}.txt  hicfile/${i}.hic $Chromosome_File
+ln -s ${RawData_Dir}/${i}/hicfile/${i}.hic ${RawData_Dir}/all_results/${i}.hic
+
+
+
+###生成bw文件
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+
+
+
+
+source activate rna
+
+
+
+
+
+BWA_File="/data/zhangyong/yyp/yypold/ref/mm10/mm10bwaindex/mm10.fa"
+Resolution=5000
+genome=mm10
+core=20
+###RawData_Dir=/data/zhangyong/yyp/yypold/hic/csdata/hicdatacs/testrundir
+Scriptpath=/data/zhangyong/yyp/yypold/hic/hicpipe/hicpipe
+JUICER=/data/zhangyong/juicer/scripts/common
+Chromosome_File="/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/annotation/chrom_mm10.sizes"
+Insulation=/data/zhangyong/yyp/yypold/hic/hicpipe/in_cworld/scripts/perl/matrix2insulation.pl 
+
+
+
+
+
+RawData_Dir=/data/zhangyong/yyp/yypold/hic/csdata/hicdatacs/testrundir
+i=csd11.1
+
+cd ${RawData_Dir}/${i}
+echo "${RawData_Dir}/${i}:"
+echo  ${RawData_Dir}/${i}
+##mkdir hicfile
+##mkdir TAD
+##mkdir CDB
+##mkdir compartment
+##mkdir maps
+##mkdir Loops
+##mkdir -p hic_results/data/${i}
+
+
+nchrom=$(cat $Chromosome_File|sed  '/_/d'|sed '/chrM/d'|sed '/chrY/d'|sort -k1,1 -V -s|cut -f2|wc -l )
+#mkdir maps
+#mkdir compartment
+
+
+echo $genome
+echo $nchrom
+
+#### step.3 extract data  #####
+#for j in $(eval echo "{1..$[nchrom-1]}")
+#do
+#echo $j
+#java -jar ${JUICER}/juicer_tools.jar  dump observed NONE hicfile/csd11.1.hic  ${j} ${j}  BP $Resolution  maps/chr${j}.matrix
+#done
+#java -jar ${JUICER}/juicer_tools.jar  dump observed NONE hicfile/csd11.1.hic X  X  BP $Resolution  maps/chr${nchrom}.matrix
+
+##### step.4 compartment  #####
+#for j in $(eval echo "{1..$[nchrom-1]}")
+#do
+#java -jar  ${JUICER}/juicer_tools.jar  eigenvector -p KR hicfile/csd11.1.hic ${j} BP 100000 compartment/csd11.1_chr${j}_pc1_100k.txt
+#done
+#java -jar  ${JUICER}/juicer_tools.jar  eigenvector -p KR hicfile/csd11.1.hic X BP 100000  compartment/csd11.1_chrX_pc1_100k.txt
+
+
+
+cd compartment
+#Rscript  ${Scriptpath}/calcuchrX_comp.r $2
+Rscript ${Scriptpath}/compartment.r csd11.1_ mm10
+cp csd11.1_pc1.bdg csd11.1_pc1_ori.bdg
+sed -i '/NA/d' csd11.1_pc1.bdg
+sort -k1,1 -k2,2n csd11.1_pc1.bdg >csd11.1_pc1.bdg.sort
+bedGraphToBigWig csd11.1_pc1.bdg.sort   ${Chromosome_File}  csd11.1_pc1.bw
+rm csd11.1_pc1.bdg.sort csd11.1_pc1.bdg
+cd ../
+cp  compartment/csd11.1_pc1.bw  ${RawData_Dir}/all_results/
+
+
+
+###insulation生成bed文件
+
+
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+
+
+
+
+source activate rna
+
+
+
+
+
+BWA_File="/data/zhangyong/yyp/yypold/ref/mm10/mm10bwaindex/mm10.fa"
+Resolution=5000
+genome=mm10
+core=20
+###RawData_Dir=/data/zhangyong/yyp/yypold/hic/csdata/hicdatacs/testrundir
+Scriptpath=/data/zhangyong/yyp/yypold/hic/hicpipe/hicpipe
+JUICER=/data/zhangyong/juicer/scripts/common
+Chromosome_File="/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/annotation/chrom_mm10.sizes"
+Insulation=/data/zhangyong/yyp/yypold/hic/hicpipe/in_cworld/scripts/perl/matrix2insulation.pl 
+
+
+
+
+
+RawData_Dir=/data/zhangyong/yyp/yypold/hic/csdata/hicdatacs/testrundir
+i=csd11.1
+
+cd ${RawData_Dir}/${i}
+echo "${RawData_Dir}/${i}:"
+echo  ${RawData_Dir}/${i}
+##mkdir hicfile
+##mkdir TAD
+##mkdir CDB
+##mkdir compartment
+##mkdir maps
+##mkdir Loops
+##mkdir -p hic_results/data/${i}
+
+
+nchrom=$(cat $Chromosome_File|sed  '/_/d'|sed '/chrM/d'|sed '/chrY/d'|sort -k1,1 -V -s|cut -f2|wc -l )
+#mkdir TAD
+
+echo $genome
+echo $nchrom
+
+
+
+#for j in $(eval echo "{1..$[nchrom-1]}")
+#do
+#java -jar ${JUICER}/juicer_tools.jar  dump -d observed KR hicfile/$i.hic  ${j} ${j}   BP 50000  TAD/KRchr${j}
+#done
+#java -jar ${JUICER}/juicer_tools.jar  dump -d observed KR hicfile/$i.hic X  X BP 50000  TAD/KRchr${nchrom}
+
+cd TAD
+#for j in $(eval echo "{1..$nchrom}")
+#do
+#nrow=$(head -n 1 KRchr${j} |awk '{print NF}')
+#Rscript ${Scriptpath}/insu_header1.r  ${j} ${nrow} 50000 
+#cat header KRchr${j} >KRchr${j}.tmp
+#paste header2 KRchr${j}.tmp > KRchr${j}.tmp2
+#time perl $Insulation -i KRchr${j}.tmp2  --is 1000000 --ids 200000 --im mean  --nt 0.1 -v
+#rm KRchr${j} KRchr${j}.tmp
+#done
+
+for i in $(eval echo "{1..$nchrom}")
+do 
+echo KRchr${i}--is1000001--nt0.1--ids200001--ss1--immean.insulation.boundaries.bed
+awk '{printf("%s\t%d\t%d\t%0.8f\n",$1,$2,$3,$5)}'  KRchr${i}--is1000001--nt0.1--ids200001--ss1--immean.insulation.boundaries.bed >> csd11.1_TAD.bed
+
+
+done
+sed -i "s/chr${nchrom}/chrX/g" csd11.1_TAD.bed
+sort -k1,1 -k2,2n -u csd11.1_TAD.bed>csd11.1_TAD.sort.bed
+cd ..
+cp TAD/csd11.1_TAD.sort.bed   ${RawData_Dir}/all_results/
+
+
+
+
+
+
+
+
