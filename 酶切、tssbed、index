@@ -1,0 +1,60 @@
+###create “toggcc”
+
+
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+
+source activate rna
+/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/bin/utils/digest_genome.py -r GG^CC -o mm10haiii.bed /data/zhangyong/yyp/yypold/ref/mm10/mm10.fa
+
+
+#####bwa-index-hg19###
+
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10               
+cd /data/zhangyong/yyp/yypold/ref/hg19
+
+source activate rna
+
+bwa index hg19.fa
+
+
+###mm10 bwa index ###
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10               
+cd /data/zhangyong/yyp/yypold/ref/mm10
+
+source activate rna
+
+bwa index mm10.fa
+
+
+
+####create  tss.bed
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+cd /data/zhangyong/yyp/yypold/hic
+perl -alne '{next if /^#/;if($F[5] eq "+"){$start=$F[1]-2500;$end=$F[1]+2500}else{$start=$F[2]-2500;$end=$F[2]+2500}print join("\t",$F[0],$start,$end,$F[3],0,$F[5])}' REFmm10.all.bed |sort -u > ucsc.refseq.tss.bed
+###如果从0列起，第五列是正负列，正链则用start【1】加减，负链则用end.2，打印chr start end score\名称 0 正负
+grep -v random  ucsc.refseq.tss.bed > mm10.tss.bed
+###去除带random的chr
+
+
+
+
+
+
+
+
