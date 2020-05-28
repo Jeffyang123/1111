@@ -85,3 +85,12 @@ java -jar $JUICER/juicer_tools.jar hiccups --cpu csd11.1.hic  wtl.hic csd11.1_te
 
 
 java -jar $JUICER/juicer_tools.jar apa  csd11.1.hic csd11.1.txt resultsapa1 
+
+####Arrowhead  find contact domain
+
+java -jar $JUICER/juicer_tools.jar arrowhead --cpu csd11.1.hic  Arrowheadoutput
+
+####
+
+
+
