@@ -15,5 +15,6 @@ hiccups --restrict [-m matrixSize] [-c chromosome(s)] [-r resolution(s)]
 #$ -l p=10  
 source acitvate rna
 
-hiccups --cpu [--threads num_threads] [-m matrixSize] [-c chromosome(s)] [-r resolution(s)] 
+ava -jar ${JUICER}/juicer_tools.jar hiccups --cpu [--threads num_threads] [-m matrixSize] [-c chromosome(s)] [-r resolution(s)] 
 		<HiC file> <outputDirectory> 
+${juicer_tools_path} hiccups ${hic_file_path} ${hic_file_path%.*}"_loops"
