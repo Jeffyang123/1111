@@ -69,4 +69,8 @@ cd ${RawData_Dir}/${i}/hicfile
 echo "${RawData_Dir}/${i}:"
 echo  ${RawData_Dir}/${i}
 
-java -jar $JUICER/juicer_tools.jar hiccups --cpu csd11.1.hic ./csd11.1_loops  #产生一个loop文件夹
+#java -jar $JUICER/juicer_tools.jar hiccups --cpu csd11.1.hic ./csd11.1_testloops  #产生一个loop文件夹
+
+
+java -jar $JUICER/juicer_tools.jar hiccups --cpu -r 3000 5000 10000 -p 6 4 2 -i 10 7 5 csd11.1.hic ./csd11.1_loops 
+
