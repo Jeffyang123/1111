@@ -1,3 +1,7 @@
+#使用方法
+1、java -jar $JUICER/juicer_tools.jar hiccups --cpu  #m1024  r5k 10k  c染色体号 输出文件夹   默认输出：5000 10000 250000  merge.bedpe
+2、java -jar $JUICER/juicer_tools.jar hiccups --cpu -m 1024 -r 5000,10000 -c 22
+3、java -jar $JUICER/juicer_tools.jar hiccups --cpu local/folder/HIC006.hic local/folder/hiccups_results   #默认输出：5000 10000 250000  merge.bedpe
 
 
 hiccups --cpu [--threads num_threads] [-m matrixSize] [-c chromosome(s)] [-r resolution(s)] 
