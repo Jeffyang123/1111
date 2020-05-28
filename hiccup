@@ -79,7 +79,7 @@ echo  ${RawData_Dir}/${i}
 
 
 ##diffloops
-java -jar $JUICER/juicer_tools.jar hiccups --cpu wtl.hic ./wtlloops
+java -jar $JUICER/juicer_tools.jar hiccups --cpu --ignore_sparsity wtl.hic ./wtlloops
 
 java -jar $JUICER/juicer_tools.jar hiccups --cpu csd11.1.hic  wtl.hic csd11.1_testloops/merged_loops.bedpe wtlloops/merged_loops.bedpe   ./outputdiff
 
