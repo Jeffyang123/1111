@@ -1,5 +1,5 @@
 #使用方法
-1、java -jar $JUICER/juicer_tools.jar hiccups --cpu  #m1024  r5k 10k  c染色体号 输出文件夹   默认输出：5000 10000 250000  merge.bedpe
+1、java -jar $JUICER/juicer_tools.jar hiccups --cpu  #m1024  r 5k,10k  c染色体号 输出文件夹   默认输出：5000 10000 250000  merge.bedpe
 2、java -jar $JUICER/juicer_tools.jar hiccups --cpu -m 1024 -r 5000,10000 -c 22
 3、java -jar $JUICER/juicer_tools.jar hiccups --cpu local/folder/HIC006.hic local/folder/hiccups_results   #默认输出：5000 10000 250000  merge.bedpe
 
@@ -72,5 +72,5 @@ echo  ${RawData_Dir}/${i}
 #java -jar $JUICER/juicer_tools.jar hiccups --cpu csd11.1.hic ./csd11.1_testloops  #产生一个loop文件夹
 
 
-java -jar $JUICER/juicer_tools.jar hiccups --cpu -r 3000 5000 10000 -p 6 4 2 -i 10 7 5 csd11.1.hic ./csd11.1_loops 
+java -jar $JUICER/juicer_tools.jar hiccups --cpu -r 3000,5000,10000 -p 6,4,2 -i 10,7,5 csd11.1.hic ./csd11.1_loops 
 
