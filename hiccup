@@ -15,6 +15,54 @@ hiccups --restrict [-m matrixSize] [-c chromosome(s)] [-r resolution(s)]
 #$ -l p=10  
 source acitvate rna
 
-ava -jar ${JUICER}/juicer_tools.jar hiccups --cpu [--threads num_threads] [-m matrixSize] [-c chromosome(s)] [-r resolution(s)] 
+java -jar /data/zhangyong/juicer/scripts/common/juicer_tools.jar hiccups --cpu [--threads num_threads] [-m matrixSize] [-c chromosome(s)] [-r resolution(s)] 
 		<HiC file> <outputDirectory> 
+	
+	
+	
 ${juicer_tools_path} hiccups ${hic_file_path} ${hic_file_path%.*}"_loops"
+
+
+(base) [zhangyong@cluster ~]$ java -jar /data/zhangyong/juicer/scripts/common/juicer_tools.jar hiccups
+Usage:   juicer_tools hiccups [-m matrixSize] [-k normalization (NONE/VC/VC_SQRT/KR)] [-c chromosome(s)] [-r resolution(s)] [-f fdr] [-p peak width] [-i window] [-t thresholds] [-d centroid distances] [--ignore_sparsity]<hicFile> <outputDirectory> [specified_loop_list]
+
+(base) [zhangyong@cluster ~]$ java -jar /data/zhangyong/juicer/scripts/common/juicer_tools.jar hiccups --cpu
+Usage:   juicer_tools hiccups [-m matrixSize] [-k normalization (NONE/VC/VC_SQRT/KR)] [-c chromosome(s)] [-r resolution(s)] [-f fdr] [-p peak width] [-i window] [-t thresholds] [-d centroid distances] [--ignore_sparsity]<hicFile> <outputDirectory> [specified_loop_list]
+
+
+
+
+###模板${juicer_tools_path} hiccups ${hic_file_path} ${hic_file_path%.*}"_loops"
+
+
+
+$JUICER hiccups $hicfile/csd11.1.hic $hicfile/csd11.1_loops"
+....
+
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+
+source activate rna
+
+BWA_File="/data/zhangyong/yyp/yypold/ref/mm10/mm10bwaindex/mm10.fa"
+Resolution=5000
+genome=mm10
+core=20
+###RawData_Dir=/data/zhangyong/yyp/yypold/hic/csdata/hicdatacs/testrundir
+Scriptpath=/data/zhangyong/yyp/yypold/hic/hicpipe/hicpipe
+JUICER=/data/zhangyong/juicer/scripts/common
+Chromosome_File="/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/annotation/chrom_mm10.sizes"
+Insulation=/data/zhangyong/yyp/yypold/hic/hicpipe/in_cworld/scripts/perl/matrix2insulation.pl 
+
+
+RawData_Dir=/data/zhangyong/yyp/yypold/hic/csdata/hicdatacs/testrundir
+i=csd11.1
+
+cd ${RawData_Dir}/${i}/hicfile
+echo "${RawData_Dir}/${i}:"
+echo  ${RawData_Dir}/${i}
+
+java -jar $JUICER/juicer_tools.jar hiccups --cpu csd11.1.hic ./csd11.1_loops  #产生一个loop文件夹
