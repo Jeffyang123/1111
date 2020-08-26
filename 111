@@ -1,0 +1,13 @@
+方案一：
+while read line;
+do
+userid=`cat ${line} | awk '{print $1}'`
+echo ${line} >> data_${userid)
+
+done<data
+
+方案二：
+split -d -a 3 -l 2000000 data d_
+for file in d_*;do
+   awk '{print $0 >> "data_"$1}'  ${file}
+done
