@@ -1,0 +1,183 @@
+找距离和找overlap万能的方法以及速度很快！
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Oct 23 22:12:34 2020
+
+@author: Administrator
+"""
+
+###我做overlap的思路
+就是把两个文件的分别标记
+然后 按照start 和end合并 
+
+
+用start排序 判断start落的区间
+用end排序 判断end落的区间
+
+之后把的到的overlap的行去重！
+
+###############
+
+排序后，找overlap的东西
+以及找最近的基因都可以，这种算法非常方便！！！！！
+
+####多文件就把文件先整合成一个新的文件！用改名字和pd.contact的方法，循环得到一个大文件
+
+
+
+import os
+os.chdir('C:/Users/Administrator/Desktop/20201021')
+
+
+#base="merged_bundary_level.txt"
+import pandas as pd
+import numpy as np
+base=pd.read_csv("merged_bundary_level.txt",sep = '\t',header =None)
+
+sec=pd.read_csv("in/protein_coding_gene_TSS_1_2k.txt",sep = '\t',header =None)
+
+
+#标记
+base["id"]="base"
+sec["id"]="sec"
+bid=base.iloc[:,[0,1,2,4]]
+sid=sec.iloc[:,[0,1,2,5]]
+
+##sort
+bid=bid.sort_values(by=[0,1])
+sid=sid.sort_values(by=[0,1])
+
+
+#mid=pd.concat([bid,sid],axis=0)
+
+#！！！需要分染色体！！！
+###sort
+#mid=mid.sort_values(by=[0,1])  取大于sstat的基因
+# mid[[0]][mid[[0]]=="chr1"]
+#mid=mid.sort_values(by=[0,2]) 取小于end的基因
+##做基因做交集
+
+
+#df=sid
+#df.columns=['n1', 'n2', 'n3', 'id']
+##df.loc[df["n1"] == "chr1"]  这种有列名的用法是正确的
+##df.loc[df[[0]] == "chr1"]
+
+##df.iloc[:,0]="chr1"少了个等号是赋值
+##df.loc[df.iloc[:,0]=="chr1"] 也是正确
+##df.iloc[df.iloc[:,0]=="chr1"] 错误
+
+#df.iloc[:,[0]][df.iloc[:,0]=="chr1"] ##可以但是只有一列
+
+#####df.iloc[:,:][df.iloc[:,0]=="chr1"]  成功！！！！！！！！
+
+df=pd.DataFrame()
+
+for i in range(len(bid)):
+    print(i)
+    b_chr=bid.iloc[i,0]
+    #b_chr="chr1"
+    b_start=bid.iloc[i,1]
+    b_end=bid.iloc[i,2]
+    #mid[[0]][mid[[0]]=="chr1"]
+   
+    #if sid[[0]].isin([b_chr])==True: ###处理每条染色体
+    sidchr=sid.iloc[:,:][sid.iloc[:,0]==b_chr] 
+        #s_start=sidchr.iloc[i,1]
+        #s_end=sidchr.iloc[i,2]
+    sid_ma=sidchr.iloc[:,:][sidchr.iloc[:,1]>=b_start]      #b_start
+    sid_mi=sidchr.iloc[:,:][sidchr.iloc[:,2]<=b_end]  #b_end
+        ##取交集
+    sid_m=pd.merge(sid_ma,sid_mi,how="inner")
+        ##sid_m.empty   判断！
+    if sid_m.empty==False:  ##处理第二个文件有overlap的位点
+            ## 第二文件的交集sid_m 采用一对多
+            #bid.iloc[i,:] + 
+            #mm=pd.merge(bid.iloc[6:7,:],sid_m,how="outer")  ###不同长度的数据也可以？？可以！！知识加入na而已
+        bid.insert(0,"indx",1)
+        sid_m.insert(0,"indx",1)
+        mm=pd.merge(bid.iloc[i:i+1,:],sid_m,on=["indx"],how="inner")
+        mm=mm.drop(["indx"],axis=1)
+        bid=bid.drop(["indx"],axis=1)
+        sid_m=sid_m.drop(["indx"],axis=1)
+            
+            #df=df.rename(columns={"0_x":"AA"})
+            #df=df+mm ##拼接列  不同列名怎么忽略
+        mm.columns=[x for x in range(len(mm.columns))]
+        df.columns=[x for x in range(len(df.columns))]
+            
+        df=pd.concat([df,mm],axis=0,ignore_index=True)
+        
+            
+    else:pass
+bid.columns=[x for x in range(len(bid.columns))]
+bid.shape
+##其实为了防止多对多，bid应该去重
+bid=bid.drop_duplicates(subset=None,keep='first',inplace=False)
+bid.shape
+df=pd.merge(bid,df,how="left")            
+df.to_csv("ces.csv",index=0)           
+            
+##d统计出现重复的次数
+dd=df.groupby(by=[0,1,2,3]).count()
+#dd=dd.iloc[:,1]          
+dd.to_csv("cffes.csv",header=None)      
+##上面是找交集的代码！！！！！！是两个大文件的形式
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+######################################           
+            
+            
+            
+            
+            #sid_m["p1"]=3
+            #sid_m["p2"]="kk"
+            mm=np.array(mm).tolist() ##list套list的问题
+            k=[]
+            for i in mm:
+                k=k+i
+            #k1="\t".join(k)  ##这种转化是不好的！
+            k2=pd.DataFrame(k).T  ##变成一列
+            #k2.info()
+            #k2.apply(pd.to_numeric)
+            
+            ###有没有不用循环直接转换的？
+            # mm.dtypes
+            # k2.dtypes  全部为object 类型没有int64类型！！所以下面merge不上
+            #转换数据类型
+            k2=k2.apply(pd.to_numeric, errors='ignore') #慎用，NA的位置会变成这种类型的数据类型！以后merge就不方便了
+         
+            
+            
+        
+            mm.columns=[x for x in range(len(mm.columns))]
+            
+            #df[[4,5]].apply(pd.to_numeric)
+            
+            k3=pd.merge(mm,k2,on=[0,1,2,3],how="outer") ###4行以后的数据类型不统一
+            k3.to_csv("ces.csv",index=0)
+            
+            
+            
+        
+            
+            
+            
+        
+        
+        
+    else:pass
+
