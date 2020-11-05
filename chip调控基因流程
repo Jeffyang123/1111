@@ -1,0 +1,271 @@
+chip调控基因流程
+
+
+##tosam
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+#mkdir -p /data/zhangyong/yyp/yypold/chips/lh724
+
+#for i in DM24h-NC-Input_FKDL202607365-1a  DM24h-NC-2_FKDL202607367-1a  DM24h-NC-1_FKDL202607366-1a  DM24h-16HD-Input_FKDL202607368-1a  DM24h-16HD-2_FKDL202607370-1a  DM24h-16HD-1_FKDL202607369-1a
+#do
+#ln -s /data/zhangyong/yyp/yypold/chips/lh11_3/data/X101SC20070420-Z01-J003/2.cleandata/$i/*gz  /data/zhangyong/yyp/yypold/chips/lh11_3/data/X101SC20070420-Z01-J003/allcleandata/
+#done
+
+
+
+
+
+
+cd /data/zhangyong/yyp/yypold/chips/lh11_3/data/X101SC20070420-Z01-J003/allcleandata/
+mkdir  sam
+bin_bowtie2=~/miniconda3/envs/rna/bin/bowtie2
+
+bowtie2_index=/data/zhangyong/yyp/yypold/ref/mm10/mm10bowtie2index/mm10
+
+export PATH=$PATH:~/miniconda3/envs/rna/bin
+
+for i in `ls *-1a_1.clean.fq.gz`
+do
+i=${i/-1a_1.clean.fq.gz/}
+
+$bin_bowtie2  -p 10  -x  $bowtie2_index -1 ${i}-1a_1.clean.fq.gz  -2 ${i}-1a_2.clean.fq.gz  -S ./sam/$i.sam
+done
+
+
+
+####tobam
+
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+
+cd /data/zhangyong/yyp/yypold/chips/lh11_3/data/X101SC20070420-Z01-J003/allcleandata/sam
+
+export PATH=$PATH:~/miniconda3/envs/rna/bin
+mkdir chenalign
+for i in `ls *.sam`
+do
+i=${i/.sam/}
+
+
+samtools view -@ 10 -q 20 -b -S $i.sam > ./chenalign/${i}.mapQ20.bam
+
+done
+
+#cd /data/zhangyong/yyp/yypold/chips/lh11_3/data/X101SC20070420-Z01-J003/allcleandata/sam/chenalign
+#for i in `ls *.bam`
+#do
+#i=${i/.mapQ20.bam/}
+
+
+#samtools sort -@ 10 -o ${i}.sort.bam   ${i}.mapQ20.bam
+#samtools rmdup -s ${i}.sort.bam ${i}.bam
+#mv ${i}.bam ${i}.sort.bam
+
+
+#samtools index -@ 20 ${i}.sort.bam >${i}.sort.bam.bai
+##rm  ${i}.mapQ20.bam
+#bamCoverage  --normalizeUsing RPKM -b ${i}.sort.bam -o ${i}.bw -p 24;
+#done
+
+
+
+
+
+
+
+#####tobai/bw
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+
+#cd /data/zhangyong/yyp/yypold/chips/lh11_3/data/X101SC20070420-Z01-J003/allcleandata/sam
+
+export PATH=$PATH:~/miniconda3/envs/rna/bin
+#mkdir chenalign
+#for i in `ls *.sam`
+#do
+#i=${i/.sam/}
+
+
+#samtools view -@ 10 -q 20 -b -S $i.sam > ./chenalign/${i}.mapQ20.bam
+
+#done
+
+cd /data/zhangyong/yyp/yypold/chips/lh11_3/data/X101SC20070420-Z01-J003/allcleandata/sam/chenalign
+for i in `ls *.bam`
+do
+i=${i/.mapQ20.bam/}
+
+
+samtools sort -@ 10 -o ${i}.sort.bam   ${i}.mapQ20.bam
+samtools rmdup -s ${i}.sort.bam ${i}.bam
+mv ${i}.bam ${i}.sort.bam
+
+
+samtools index -@ 20 ${i}.sort.bam >${i}.sort.bam.bai
+#rm  ${i}.mapQ20.bam
+bamCoverage  --normalizeUsing RPKM -b ${i}.sort.bam -o ${i}.bw -p 24;
+done
+
+
+#####callpeak
+
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+
+export PATH=$PATH:~/miniconda3/envs/rna/bin
+#source activate rna
+
+cd /data/zhangyong/yyp/yypold/chips/lh11_3/data/X101SC20070420-Z01-J003/allcleandata/sam/chenalign/NC
+#rm *mapQ20.bam
+mkdir chenpk
+###call peaks
+
+ls  *.bam |cut -d"." -f 1 |while read id;
+do 
+    if [ ! -s ${id}_summits.bed ];
+    then 
+echo $id 
+##macs2 callpeak -c   Input_FKDL202573275.bam -t ${id}.bam -f BAMPE -B -g mm -n $id --outdir ../peaks  2> $id.log  
+macs2 callpeak -c   DM24h-NC-Input_FKDL202607365.sort.bam -t ${id}.sort.bam -f BAMPE -g mm  -B -n $id --outdir ./chenpk  2> $id.log 
+    fi 
+done  
+
+
+
+
+#####分正负链提取promoter区间
+
+###提取promoter
+sed 's/"/\t/g' gencode.vM25.annotation.gtf | awk 'BEGIN{OFS=FS="\t"}{if($3=="gene") {ensn=$10; symbol=$14; if($7=="+") {start=$4-1; up=start-2000; if(up<0) up=0; dw=start+2000; print $1,up, dw,  symbol, $7,ensn;} else if($7=="-") {start=$5-1; up=start+2000; dw=start-2000; if(dw<0) dw=0; print $1,dw,up,symbol,$7,ensn}}}' | sort -k1,1 -k2,2n >mm10.promoter.bed
+
+
+
+
+
+
+########chip调控的基因
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Nov  5 15:16:50 2020
+
+@author: Administrator
+"""
+
+import numpy as np
+import pandas as pd
+
+
+import os
+# -*- coding:utf-8 -*-
+os.chdir('C:/Users/Administrator/Desktop/lh_chip/')
+####csv转txt有不符合的格式则黏贴到notepade解决！！
+
+file_path = "C:/Users/Administrator/Desktop/lh_chip/"
+dirs = os.listdir(file_path)
+
+for i in dirs:
+    if i.split("-")[0]=="DM24h":
+        os.system("python overlap.py \
+          "+i+" \
+          ./in \
+          1 \
+          0 \
+          ./out/")
+    else:pass
+        
+    
+    
+
+def savetxt(filename,x):
+    np.savetxt(filename,x,delimiter = '\t',fmt='%s')  
+    
+    
+    
+    
+    
+
+file_path = "C:/Users/Administrator/Desktop/lh_chip/out"
+dirs = os.listdir(file_path)   
+
+for i in dirs:
+    n=i.split("_")[0]
+    df=pd.read_csv("./out/"+i,sep = '\t',names=[x for x in range(100)],header =None)
+    df=df.dropna(axis=1,how="all")
+    
+
+       
+    
+    lis=list(df.columns)
+##步长切片
+    lis[6:df.shape[1]+1:4]
+    nco=[x for x in range(3)]+lis[6:df.shape[1]+1:4]
+
+    df2=df[nco]
+
+    #df2.drop_duplicates(subset=[0,1,2,3])
+
+    dic={}
+    for d in range(len(df2)):
+
+       k=tuple(df2.iloc[d,[0,1,2]])
+       v=list(df2.iloc[d,3:].dropna())
+       if k not in dic.keys():
+           dic[k]=v
+       else:pass
+       
+    di=[]
+    for k,v in dic.items():
+        
+        
+    
+        ka=list(k)
+        if len(v):
+            for f in v:
+                ka.append(f)
+                di.append(ka)
+                ka=list(k)
+                
+        else:
+            di.append(ka)
+            #pass
+                
+               
+                
+        #print(va)
+        
+    dff=pd.DataFrame(di)
+    num=len(di)
+    print(n+"num is:",num )
+    dff.to_csv("C:/Users/Administrator/Desktop/lh_chip/output/"+n,index=0,header=None)
+    
+    
+    
+    
+    
+    
+    #np.savetxt("C:/Users/Administrator/Desktop/lh_chip/output/"+n,di)
+
+       
+
+    
+
+    
+
+    
+
+
+    
+    
+
