@@ -1,0 +1,136 @@
+hic降采样的方法
+
+#将采样的步骤
+
+1、将matrix 3列为raw.matrix  按照染色体号，把第三列进行加和 （也是降采样的目标？）
+
+chrY	16
+chrX	1969820
+chr13	1825793
+chr12	2463789
+chr11	3000329
+chr10	2715215
+chr17	916119
+chr16	1230877
+chr15	1885971
+chr14	1565665
+chr19	621604
+chr18	1350806
+chrM	184
+chr22	313722
+chr20	1769444
+chr21	482989
+chr7	4669928
+chr6	5106027
+chr5	3847494
+chr4	4223746
+chr3	6487738
+chr2	8121536
+chr1	5644403
+chr9	1950672
+chr8	3959423
+
+2、从.hic上dumn下来分辨率采样率比较高的3列matrix的文件。
+比如22号染色体的
+16050000	16050000	12.0
+16200000	16200000	4.0
+16150000	16300000	1.0
+16200000	16300000	1.0
+16250000	16300000	1.0
+16300000	16300000	10.0
+
+如16050000	16050000	12.0 这个位点，把数目12构建成index,目的是方便这个位点随机抽样
+0   16050000	16050000
+1   16050000	16050000
+2   16050000	16050000
+3   16050000	16050000
+.
+.
+.
+12  16050000	16050000
+
+
+
+3  把bed 3列的矩阵按照染色体分开，bin的长度不变
+chr1	0	50000	1
+chr1	50000	100000	2
+chr1	100000	150000	3
+chr1	150000	200000	4
+chr1	200000	250000	5
+chr1	250000	300000	6
+chr1	300000	350000	7
+chr1	350000	400000	8
+chr1	400000	450000	9
+chr1	450000	500000	10
+chr1	500000	550000	11
+chr1	550000	600000	12
+chr1	600000	650000	13
+
+
+4运行降采样的代码
+
+
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Nov  5 11:12:06 2020
+
+@author: 312
+"""
+import random
+from random import sample
+import numpy as np
+import scipy.sparse as sps
+import os
+def savetxt(filename,x):
+    np.savetxt(filename,x,delimiter = '\t',fmt='%s')
+
+final_depth={}
+
+depfile=open("/home/s312/codes/Dekker_RPMI7951.allValidPairs.matrix_depth_50k.txt","r") ###3列为raw.matrix  按照染色体号，把第三列进行加和 （也是降采样的目标？ 这个目标文件就是每条染色体互作的数量）
+######chr1	5644403
+###########这个文件就是我们需要把样本降采样要降低到的目标量，这个样本就是采样低的样本，高采样的样本向他靠拢，这个低可以是可以再低样本中随机挑选一个，作为高采样样本需要达到的目的
+for i in depfile:
+    l=i.strip().split("\t")
+    final_depth[l[0]]=int(l[1])
+
+
+
+def chr_split(chrname,fl):
+    depth1={}
+    depth=0
+    number=0
+	
+    with open("/home/s312/data/ontad/50k_mat/"+fl+"/"+chrname+"_50000_KR.txt","r") as f:   #从.hic上dumn下来分辨率采样率比较高的3列matrix的文件，构建索引！chr1  1.267347e+08
+	#####路径理解/home/yyp/downsampling_test/50k_mat/GSE63525_GM12878_insitu_primary_30.hic/...  这个文件夹是循环的内容GSE63525_GM12878_insitu_primary_30.hic==f1
+	
+        for line in f:
+            sep=line.strip().split("\t")
+            n=int(float(sep[-1]))
+            bin1=sep[:-1]
+            for i in range(n):
+                number+=1
+                depth1[number]=bin1
+            depth+=int(float(sep[-1]))
+
+    f=open("/home/s312/data/ontad/Rao/50k_bedsplit/"+chrname+"_.bed","r")       ##3  把bed 3列的矩阵按照染色体分开，bin的长度不变
+	
+    length=len(f.readlines())
+    f.close()
+    mtx = sps.dok_matrix((length, length), dtype=np.float)
+    random.seed(0)
+    for i in sample(depth1,final_depth[chrname]):
+        tags = depth1[i]
+        mtx[int(tags[0])/50000, int(tags[1])/50000] +=1
+        mtx[int(tags[1])/50000, int(tags[0])/50000] +=1
+    mtx = mtx.todense()
+    savetxt("/home/s312/data/ontad/50k_mat_downsample2/"+fl+chrname+"_matrix.txt",mtx)
+chromo=["chr1","chr2","chr3","chr4","chr5","chr6","chr7","chr8","chr9","chr10","chr11","chr12","chr13","chr14","chr15","chr16","chr17","chr18","chr19","chr20","chr21","chr22","chrX"]
+
+files=os.listdir("/home/s312/data/ontad/50k_mat")
+for j in files:
+    for i in chromo:
+        print j,i
+        chr_split(i,j)
+
+
+
