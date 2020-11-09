@@ -1,0 +1,55 @@
+降采样运行测试py2环境
+
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Nov  5 11:12:06 2020
+
+@author: 312
+"""
+import random
+from random import sample
+import numpy as np
+import scipy.sparse as sps
+import os
+def savetxt(filename,x):
+    np.savetxt(filename,x,delimiter = '\t',fmt='%s')
+
+final_depth={}
+depfile=open("/home/yyp/downsampling_test/Dekker_RPMI7951.allValidPairs.matrix_depth_50k.txt","r")
+for i in depfile:
+    l=i.strip().split("\t")
+    final_depth[l[0]]=int(l[1])
+
+def chr_split(chrname,fl):
+    depth1={}
+    depth=0
+    number=0
+    with open("/home/yyp/downsampling_test/50k_mat/"+fl+"/"+chrname+"_50000_KR.txt","r") as f: 
+        for line in f:
+            sep=line.strip().split("\t")
+            n=int(float(sep[-1]))
+            bin1=sep[:-1]
+            for i in range(n):
+                number+=1
+                depth1[number]=bin1
+            depth+=int(float(sep[-1]))
+
+    f=open("/home/yyp/downsampling_test/50k_bedsplit/"+chrname+"_.bed","r")
+    length=len(f.readlines())
+    f.close()
+    mtx = sps.dok_matrix((length, length), dtype=np.float)
+    random.seed(0)
+    for i in sample(depth1,final_depth[chrname]):
+        tags = depth1[i]
+        mtx[int(tags[0])/50000, int(tags[1])/50000] +=1
+        mtx[int(tags[1])/50000, int(tags[0])/50000] +=1
+    mtx = mtx.todense()
+    savetxt("/home/yyp/downsampling_test/50k_mat_downsample2/"+fl+chrname+"_matrix.txt",mtx)
+chromo=["chr1","chr2","chr3","chr4","chr5","chr6","chr7","chr8","chr9","chr10","chr11","chr12","chr13","chr14","chr15","chr16","chr17","chr18","chr19","chr20","chr21","chr22","chrX"]
+
+files=os.listdir("/home/yyp/downsampling_test/50k_mat")
+for j in files:
+    for i in chromo:
+        print j,i
+        chr_split(i,j)
+
