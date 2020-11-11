@@ -1,0 +1,45 @@
+validpairs
+
+E00511:284:HLC57CCXY:1:1107:19827:64984	chr1	3000679	-	chr2	137108341	+	126	HIC_chr1_2	HIC_chr2_339405	39	42
+A00358:57:H5KF2DMXX:1:2418:5403:10880	chr1	3000703	-	chr1	3003536	-	132	HIC_chr1_2	HIC_chr1_5	38	42
+E00511:284:HLC57CCXY:1:2110:22211:36487	chr1	3000703	-	chr1	8047869	+	148	HIC_chr1_2	HIC_chr1_10728	39	42
+E00511:284:HLC57CCXY:1:1107:17777:41145	chr1	3000708	-	chr1	3011547	-	183	HIC_chr1_2	HIC_chr1_21	39	42
+A00358:57:H5KF2DMXX:1:1236:19994:25441	chr1	3000749	-	chr1	18853867	+	160	HIC_chr1_2	HIC_chr1_34792	37	42
+E00511:284:HLC57CCXY:1:2218:32116:49390	chr1	3000794	-	chr1	22148300	-	288	HIC_chr1_2	HIC_chr1_41870	42	42
+E00511:284:HLC57CCXY:1:2121:21115:26290	chr1	3000837	-	chr11	77984995	-	234	HIC_chr1_2	HIC_chr11_213267	42	42
+E00511:284:HLC57CCXY:1:1204:15828:41075	chr1	3000838	-	chr1	3005128	+	244	HIC_chr1_2	HIC_chr1_6	42	42
+E00511:284:HLC57CCXY:1:1124:2067:33410	chr1	3001617	+	chr15	21454411	+	498	HIC_chr1_2	HIC_chr15_37684	40	42
+E00511:284:HLC57CCXY:1:1224:25733:22124	chr1	3001639	+	chr1	3027410	+	261	HIC_chr1_2	HIC_chr1_47	42	42
+read name	chr_reads1	pos_reads1	strand_reads1	chr_reads2	pos_reads2	strand_reads2	fragment_size	[allele_specific_tag]			
+											
+hic_results											
+This folder contains all Hi-C processed data, and is further divided in several sub-folders.											
+The data folder is used to store the valid interaction products (.validPairs), as well as other statisics files.											
+The validPairs are stored using a simple tab-delimited text format ;											
+read name / chr_reads1 / pos_reads1 / strand_reads1 / chr_reads2 / pos_reads2 / strand_reads2 / fragment_size [/ allele_specific_tag]											
+One validPairs file is generated per reads chunck. These files are then merged in the allValidPairs, and duplicates are removed if specified in the configuration file.											
+The contact maps are then available in the matrix folder. The matrix folder is organized with raw and iced contact maps for all resolutions.											
+Contact maps are stored as a triplet sparse format ;											
+bin_i / bin_j / counts_ij											
+Only no zero values are stored. BED file described the genomic bins are also generated. Note that abs and ord files are identical in the context of Hi-C data as the contact maps are symmetric.											
+Finally, the pic folder contains graphical outputs of the quality control checks.											
+											
+											
+hic_results											
+此文件夹包含所有Hi-C处理的数据，并进一步划分为若干个子文件夹。											
+数据文件夹用于存储有效的交互产品(. validpair)以及其他统计文件。											
+验证对使用简单的以制表符分隔的文本格式存储;											
+读取名称/ chr_reads1 / pos_reads1 / strand_reads1 / chr_reads2 / pos_reads2 / fragment_size [/ allele_specific_tag]											
+每个读块生成一个validpair文件。然后将这些文件合并到allvalid对中，如果在配置文件中指定，则删除重复的文件。											
+联系人地图然后在矩阵文件夹中可用。矩阵文件夹是组织与所有决议的原始和冰冻的联系地图。											
+联系人地图以三联体稀疏格式存储;											
+bin_i / bin_j / counts_ij											
+仅不存储零值。床文件描述的基因组箱也生成。注意，abs和ord文件在Hi-C数据上下文中是相同的，因为联系人映射是对称的。											
+最后，pic文件夹包含质量控制检查的图形输出。											
+											
+											
+								
+											
+											
+GENOME_FRAGMENT =# HiC消化片段位点文件，这个文件在每个HIC流程中都需要生成，一般HiC建库的酶为hindiii(A^AGCTT )或者dnpiii											
+。data文件夹下是比对上的有效序列对，											
