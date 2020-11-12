@@ -1,0 +1,27 @@
+染色体大小画图
+
+#bowtie2-build hg19/hg19.fa hg19/hg19
+
+#直接拷贝构建好的bowtie2索引
+cp /local_data1/GUEST/3d_train/pipeline/Interaction/genome/hg19.*bt2 ./hg19
+
+#获取genome size 文件
+samtools faidx hg19/hg19.fa 
+awk '{print $1 "\t" $2}' hg19/hg19.fa.fai > hg19/hg19.sizes
+
+####config文件配置：bowtie2_IDX_PATH:是索引的路径 如.../hg19/
+REFERENCE_GENOME:是索引的前缀，如hg19
+
+
+
+
+
+
+
+
+
+
+python /local_data1/GUEST/3d_train/software/HiC-Pro_2.11.1/scripts/HiCPlotter.py  -f matrix/CD34_1000k_raw.matrix -bed matrix/CD34_1000k_abs.bed -tri 1  -n CD34_raw_1000k -o picture/CD34_raw_1000k -r 1000000 -wg 0 -chr chr1 
+
+
+python /local_data1/GUEST/3d_train/software/HiC-Pro_2.11.1/scripts/HiCPlotter.py  -f matrix/CD34_1000k_iced.matrix -bed matrix/CD34_1000k_abs.bed -tri 1  -n CD34_iced_1000k -o picture/CD34_iced_1000k -r 1000000 -wg 0 -chr chr1 
