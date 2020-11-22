@@ -14,3 +14,239 @@ for i in bed:
 
 
 
+
+
+
+https://www.jianshu.com/p/ab2bb3f55d6f
+
+https://www.jianshu.com/p/1bfcf4620dd9  awk提取差异分析结果时候的一个小错误
+
+  -R ~/reference/gtf/TAIR10/TAIR10_GFF3_genes.bed \
+
+ help="Reference-point refers to a position within a BED region "
+        "(e.g., the starting point). In this mode, only those genomic"
+        "positions before (upstream) and/or after (downstream) of the "
+        "reference point will be plotted.",
+        usage='An example usage is:\n  computeMatrix reference-point -S '
+        '<biwig file(s)> -R <bed file> -a 3000 -b 3000\n\n')
+		
+		
+Example 1: single input files (reference-point mode)
+Here, we start with a single bigWig and a single BED file, i.e., computeMatrix will:
+
+take the beginning of the regions specified in the BED file
+add the values indicated with --beforeRegionStartLength (-b) and --afterRegionStartLength (-a)
+split the resulting region up into 50 bp bins (can be changed via (--binSize)
+calculate the mean score based on the scores given in the bigWig file (the kind of score can be changed via --averageTypeBins)
+write out the values where each row corresponds to one region in the BED file (note that you can, for example, skip regions with zero coverage; sorting is also possible)
+
+
+reference-point
+Reference-point refers to a position within a BED region (e.g., the starting point). In this mode, only those genomicpositions before (upstream) and/or after (downstream) of the reference point will be plotted.
+
+An example usage is:
+  computeMatrix reference-point -S <biwig file(s)> -R <bed file> -a 3000 -b 3000
+Required arguments
+--regionsFileName, -R
+ 	File name or names, in BED or GTF format, containing the regions to plot. If multiple bed files are given, each one is considered a group that can be plotted separately. Also, adding a “#” symbol in the bed file causes all the regions until the previous “#” to be considered one group.
+
+
+--referencePoint
+ 	
+Possible choices: TSS, TES, center
+
+The reference point for the plotting could be either the region start (TSS), the region end (TES) or the center of the region. Note that regardless of what you specify, plotHeatmap/plotProfile will default to using “TSS” as the label. (Default: “TSS”)
+
+
+    required.add_argument('--regionsFileName', '-R',
+                          help='File name(s), in BED or GTF format, containing the regions. '
+                               'If multiple bed files are given, each one is '
+                               'considered a group that can be plotted separately. '
+                               'Also, adding a "#" symbol in the bed file causes all '
+                               'the regions until the previous "#" to be considered '
+                               'one group. Alternatively for BED files, putting '
+                               'deepTools_group in the header can be used to indicate a '
+                               'column with group labels. Note that these should be '
+                               'sorted such that all group entries are together.',
+                          required=True,
+                          nargs='+')
+
+
+
+elif case == 'reference-point':
+        optional.add_argument('--referencePoint',
+                              default='TSS',
+                              choices=['TSS', 'TES', 'center'],
+                              help='The reference point for the plotting '
+                              'could be either the region start (TSS), the '
+                              'region end (TES) or the center of the region. '
+                              'Note that regardless of what you specify, '
+                              'plotHeatmap/plotProfile will default to using "TSS" as the '
+                              'label. (Default: %(default)s)')
+							  
+							  
+							  
+							  
+							  
+							  
+							  
+							  
+							  
+							  
+ Splits into
+        multiple cores the computation of the scores
+        per bin for each region (defined by a hash '#'
+        in the regions (BED/GFF) file.							  
+							  
+							  
+							  
+							  
+def chopRegions(exonsInput, left=0, right=0):
+    """
+    exons is a list of (start, end) tuples. The goal is to chop these into
+    separate lists of tuples, to take care or unscaled regions. "left" and
+    "right" denote regions of a given size to exclude from the normal binning
+    process (unscaled regions).
+    This outputs three lists of (start, end) tuples:
+    leftBins: 5' unscaled regions
+    bodyBins: body bins for scaling
+    rightBins: 3' unscaled regions
+    In addition are two integers
+    padLeft: Number of bases of padding on the left (due to not being able to fulfill "left")
+    padRight: As above, but on the right side
+    """
+    leftBins = []
+    rightBins = []
+    padLeft = 0
+    padRight = 0
+    exons = deepcopy(exonsInput)
+
+	from copy import deepcopy
+	
+	
+	This tool calculates scores per genome regions and prepares an intermediate file that can be used with ``plotHeatmap`` and ``plotProfiles``.
+Typically, the genome regions are genes, but any other regions defined in a BED file can be used.
+computeMatrix accepts multiple score files (bigWig format) and multiple regions files (BED format).
+This tool can also be used to filter and sort regions according
+to their score.
+To learn more about the specific parameters, type:
+$ computeMatrix reference-point --help or
+$ computeMatrix scale-regions --help
+	
+	
+	
+#######第二列就是start  第三列就是end  （三列bed文件所以没有指定链的信息的时候，必须把负链的start设置为第二列，如果输入有6列，第六列带正负链的信息的时候就正常设置就可以了）
+	
+	 elif case == 'reference-point':
+        optional.add_argument('--referencePoint',
+                              default='TSS',
+                              choices=['TSS', 'TES', 'center'],
+                              help='The reference point for the plotting '
+                              'could be either the region start (TSS), the '
+                              'region end (TES) or the center of the region. '
+                              'Note that regardless of what you specify, '
+                              'plotHeatmap/plotProfile will default to using "TSS" as the '
+                              'label. (Default: %(default)s)')
+							  
+							  
+							  
+							  
+							  
+							  
+							  
+							  
+							  
+							  
+							  
+							  
+							  
+def main(args=None):
+
+    args = process_args(args)
+
+    parameters = {'upstream': args.beforeRegionStartLength,
+                  'downstream': args.afterRegionStartLength,
+                  'body': args.regionBodyLength, 'ref point': args.referencePoint,}
+
+
+ hm = heatmapper.heatmapper()				  
+ 
+ class heatmapper(object):  
+ self.special_params = set(['unscaled 5 prime', 'unscaled 3 prime', 'body', 'downstream', 'upstream', 'ref point', 'bin size'])
+ 
+ 
+ 
+ 
+ 下载TSS.bed文件（是6列以上的，有正负链的信息）
+
+group这个选项我不太确定，但是大家都选的这个我就没改了。
+
+track里可以选择NCBI RefSeq或者UCSC gene，这里选了NCBI
+
+group一般不变
+
+table里如果track选择NCBI RefSeq，这里就选择RefSeq；如果track选择UCSC gene，这里就选knownGene
+
+output format根据自己的需求选择
+
+file type returned这里选gzip compressed，这样就可以下载到压缩包格式的输出文件。选text则下载文本格式。
+
+output file一定要写上一个文件名字，如果为空则后面无法下载，而只能在浏览器上查看。
+
+最后点击get output即可
+
+
+reference-point
+Reference-point refers to a position within a BED region (e.g., the starting point). In this mode, only those genomicpositions before (upstream) and/or after (downstream) of the reference point will be plotted.
+
+An example usage is:
+  computeMatrix reference-point -S <biwig file(s)> -R <bed file> -a 3000 -b 3000
+  
+  
+--regionsFileName, -R
+ 	File name or names, in BED or GTF format, containing the regions to plot. If multiple bed files are given, each one is considered a group that can be plotted separately. Also, adding a “#” symbol in the bed file causes all the regions until the previous “#” to be considered one group. 
+	
+	
+BED
+typical file extension: .bed
+
+text file
+
+used for genomic intervals, e.g. genes, peak regions etc.
+
+the format can be found at UCSC
+
+for deepTools, the first 3 columns are important: chromosome, start position of the region, end position of the genome
+
+do not confuse it with the bedGraph format (although they are related)
+
+example lines from a BED file of mouse genes (note that the start position is 0-based, the end-position 1-based, following UCSC conventions for BED files):
+
+chr1    3204562 3661579 NM_001011874 Xkr4   -
+chr1    4481008 4486494 NM_011441    Sox17  -
+chr1    4763278 4775807 NM_001177658 Mrpl15 -
+chr1    4797973 4836816 NM_008866    Lypla1 +
+
+
+
+###########画increase区域和decrease区域的代码
+
+computeMatrix reference-point  --referencePoint TSS  -p 15  \
+-b 2000 -a 2000    \
+-R  $bed $beds  \
+-S $id  \
+--skipZeros  -o matrix1_${sample}_TSS_2K.gz  \
+--outFileSortedRegions regions1_${sample}_TSS_2K.bed
+
+
+######把多个样本画到同一个区域
+computeMatrix reference-point  --referencePoint TSS  -p 15  \
+-b 2000 -a 2000    \
+-R  $bed $beds  \
+-S $id  \
+--skipZeros  -o matrix1_${sample}_TSS_2K.gz  \
+--outFileSortedRegions regions1_${sample}_TSS_2K.bed
+
+
+###如何合并重复样本？（或者根本就不用合并？bw文件怎么生成？）
+ 
