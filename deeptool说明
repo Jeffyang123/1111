@@ -1,0 +1,16 @@
+deeptools说明：tss 和tes  对于R参数，只给两列就可以了，就是染色体好，和tss位点或者tes位点。
+
+得到矩阵后，就用矩阵画热图！可以自己自定义画图！
+
+
+芳:
+http://www.360doc.com/content/19/0811/08/52645714_854182906.shtml
+
+
+for i in bed:
+    for j in bigwig:
+        os.system("computeMatrix reference-point --referencePoint center -a 2000 -b 2000 -R ./bed/APTF/"+str(i)+" -S ./K562_TF_chip_seq_bigwig/"+str(j)+" -o ./heatmapmatix2/"+str(i)+"_"+str(j)+".gz")
+        os.system("plotHeatmap -m ./heatmapmatix2/"+str(i)+"_"+str(j)+".gz -out ./heatmapmatix2/"+str(i)+"_"+str(j)+".png --colorMap viridis")
+
+
+
