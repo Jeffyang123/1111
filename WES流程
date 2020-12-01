@@ -1,0 +1,98 @@
+WES流程。见https://gatk.broadinstitute.org/hc/en-us。。。
+https://gatk.broadinstitute.org/hc/en-us/sections/360007226651-Best-Practices-Workflows
+
+
+https://cloud.tencent.com/developer/article/1442293
+。。
+
+
+
+
+use strict;
+
+#0.准备阶段
+#配置环境
+#Ubuntu18.04
+#conda（3）及conda下的fastqc(质控)，bwa（比对），samtools(处理sam文件)
+#gatk(变异识别), picard（与samtools功能互补）。此处示例是gatk4.0.4.0版本的代码，不同版本稍有不同。
+#文件
+#样本测序文件fastq
+#人类参考基因组序列的fa文件（例如GRCh38.fa）,vcf文件（例如dbSNP.vcf，1000G.vcf等），注意fa文件和vcf文件的版本一定要对应起来。
+
+#样本（双端测序有1和2两个）
+my $sample_1 = "  ";
+my $sample_2 = "  ";
+my $sample= "  ";
+
+#参考序列
+my $ref = "  .fa";
+my $knownSites = "  .vcf";
+
+#输入和输出路径
+my $indir = "  ";
+my $outdir = "  ";
+
+#原始数据质控
+#二代测序下来的短序列（read）存储于FASTQ文件里面。虽然它们原本都来自于有序的基因组，但在经过DNA建库和测序之后，文件中不同read之间的前后顺序关系就已经全部丢失了。因此，fastq文件中紧挨着的两条read之间没有任何位置关系，它们都是随机来自于原本基因组中某个位置的短序列而已。首先需要先把这一大堆的短序列捋顺，一个个去跟参考基因组比较，找到每一条read在参考基因组上的位置，然后按顺序排列好，即为测序数据的比对。
+system("fastqc -t 12 -o $outdir $sample_1.fq $sample_2.fq");
+#-o --outdir:输出路径
+#-f --format:输入文件格式.支持bam,sam,fastq文件格式 -t --threads:线程数 
+#-c --contaminants：制定污染序列。文件格式 name[tab]sequence 
+#-a --adapters：指定接头序列。文件格式name[tab]sequence 
+#-k --kmers：指定kmers长度（2-10bp,默认7bp） -q --quiet： 安静模式
+
+
+#用bwa比对到参考基因组（mapping）
+system("bwa index $ref"); #建立索引文件,以便能够在序列比对的时候进行快速的搜索和定位
+system("bwa mem -t 12 -M -R "@RG\tID:lane1\tPL:illumina\tLB:library\tSM:wes" $ref $indir/$sample_1.fq.gz  $indir/$sample_2.fq.gz > $outdir/$sample.sam"); #用bwa mem的算法进行比对
+#-t，线程数
+#-M, 将 shorter split hits 标记为次优，以兼容 Picard markDuplicates 软件;
+#-R 设置Read Group信息，不可或缺，它是read数据的组别标识，并且其中的ID，PL和SM信息在正式的项目中是不能缺少的(如果样本包含多个测序文库的话，LB信息也不要省略)，另外由于考虑到与GATK的兼容关系，PL（测序平台）信息不能随意指定，必须是：ILLUMINA，SLX，SOLEXA，SOLID，454，LS454，COMPLETE，PACBIO，IONTORRENT，CAPILLARY，HELICOS或UNKNOWN这12个中的一个。此信息对于我们后续对比对数据进行错误率分析和Mark duplicate时非常重要。
+
+system("samtools view -b -S $ourdir/$sample.sam > $outdir/$sample.bam");  #sam转bam,二进制文件能极大地压缩容量，便于存储
+
+#FASTQ文件里被测序下来的read是随机分布于基因组上面的，第一步的比对是按照FASTQ文件的顺序把read逐一定位到参考基因组上,随即输出,这一步没有自动识别比对位置的先后位置来重排比对结果。因此，比对后得到的结果文件中，每一条记录之间位置的先后顺序是乱的，我们后续去重复等步骤都需要在比对记录按照顺序从小到大排序下来才能进行，因此必须进行排序。
+system("samtools sort $ourdir/$sample.bam -o $ourdir/$sample.sorted.bam");    
+#统计比对信息
+system("samtools flagstat $ourdir/$sample.sorted.bam > $ourdir/$sample.sorted.bam.flagstat");
+#flagstat的文件包含以下内容
+#1. QC pass的reads的数量为5002344 ，未通过QC的reads数量为0，意味着一共有5002344条reads；
+#2.标记为secondary的read
+#3. 嵌合体reads
+#4.PCR 重复引起的reads
+#5.  比对到参考基因组上的reads数量；
+#6.  paired reads数据数量；
+#7.  read1的数量；
+#8.  read2 的数量；
+#9.  正确地匹配到参考序列的reads数量；
+#10.  一对reads都比对到了参考序列上的数量，但是并不一定比对到同一条染色体上；
+#11. 一对reads中只有一条与参考序列相匹配的数量； 
+#12.  一对reads比对到不同染色体的数量；
+#13.  一对reads比对到不同染色体的且比对质量值大于5的数量。
+
+#定义gatk路径
+my $gatk = "/home/hqy/Downloads/gatk-4.0.4.0/gatk-package-4.0.4.0-local.jar";
+#标记PCR重复序列（测序过程引起，有多种原因）
+system("java -jar $gatk MarkDuplicates -I $ourdir/$sample.sorted.bam -O $outdir/$sample.sorted.markdup.bam -M $outdir/$sample.sorted.markdup_metrics.txt"); 
+
+#GATK使用两个文件：.dict重叠群名称和大小的字典和快速.fai索引文件，来实现有效随机访问，必须生成这两个文件才能使用Fasta文件作为参考。
+system("java -jar $gatk CreateSequenceDictionary -R $ref -O $outdir/GRCh38_compat.dict");
+system("samtools faidx $outdir/GRCh38_compat.fa");
+
+#同理，为vcf文件创建index
+system ("java -jar $gatk IndexFeatureFile -F $knownSites") if !-e "$knownSites.idx"; 
+
+#执行重新校正碱基质量值（BQSR）——在Call 变异之前，为了消除测序过程中由于仪器等原因导致的系统偏差,通过机器学习的方法构建测序碱基的错误率模型，对碱基质量值进行相应调整,包含两个步骤：
+#1.BaseRecalibrator，计算出所有需要进行重校正的read和特征值，把这些信息输出为一份校准表文件（wes.recal_data.table）
+#这里因为流量和运行限制，示例中的knownSites只下载了dbsnp的vcf resource，另外还有miils，1000G等。
+system ("java -jar $gatk BaseRecalibrator -R $ref -I $outdir/$sample.sorted.markdup.bam --known-sites $knownSites -O $outdir/$sample.sorted.markdup.recal_data.table");
+  
+#2.ApplyBQSR，利用校准表文件（wes.recal_data.table）重新调整原来BAM文件中的碱基质量值，并使用这个新的质量值重新输出一份新的BAM文件。
+system("java -jar $gatk ApplyBQSR --bqsr-recal-file $outdir/$input.sorted.markdup.recal_data.table -R $ref -I $dir/$input.sorted.markdup.bam -O $outdir/$input.sorted.markdup.BQSR.bam");
+
+#为$sample.sorted.markdup.BQSR.bam构建Index，以便随机访问文件中的任意位置
+system("samtools index $outdir/$sample.sorted.markdup.BQSR.bam");
+
+#终于到了激动人心的variant calling!!
+system("java -jar $gatk HaplotypeCaller -R $ref -I $outdir/$sample.sorted.markdup.BQSR.bam -O $outdir/$sample.vcf.gz");
+#恭喜！生成了vcf文件~
