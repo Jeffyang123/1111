@@ -1,0 +1,136 @@
+lyt_motif
+
+##################################################
+## Project: ctcf dynamic
+## Script purpose: compare the motif enrichment for dynamic ctcf binding peaks
+## Date: 2020-09-13
+## Author: Yuting Liu
+##################################################
+
+## Section: set env
+##################################################
+setwd("/lustre/user/liclab/liuyt/ChenQ/Figures/CTCF-diffBD-WTGMvsWTDM")
+
+## Section: read the homer results
+##################################################
+file.ls <- list.files('../../ChIP/data/HOMER_findMotifs/', 
+                      pattern = "knownResults.txt", recursive = T, full.names = T )
+
+file.ls <- file.ls[c(1,2,4)]
+
+freq.ls <- lapply(file.ls, function(file){
+  df <- fread(file)
+
+  loci <- grep('1e', df$`P-value`)
+  df$logp <- 0
+  df$logp[loci] <- -as.numeric(as.character(substr(df$`P-value`[loci], 3,20)))
+  df$logp[-loci] <- -log10(as.numeric(as.character(df$`P-value`[-loci])))
+  
+  df$`% of Target Sequences with Motif` <- unlist(lapply(df$`% of Target Sequences with Motif`, function(chr){
+    substr(chr, 1, nchar(chr)-1)
+  }))
+  df$perct <- as.numeric(as.character(df$`% of Target Sequences with Motif`))
+  
+  df$`% of Background Sequences with Motif` <- unlist(lapply(df$`% of Background Sequences with Motif`, function(chr){
+    substr(chr,1, nchar(chr)-1 )
+  }))
+  df$perctbg <- as.numeric(as.character(df$`% of Background Sequences with Motif`))
+  df$enrich <- df$perct/df$perctbg
+  
+  
+  return(df[,c(1,10,11,13)])
+})
+
+## Section: get the merged motif frequency count table
+##################################################
+df <- data.frame(cbind(freq.ls[[1]], freq.ls[[2]][match(freq.ls[[1]]$`Motif Name`, freq.ls[[2]]$`Motif Name`),],
+                                     freq.ls[[3]][match(freq.ls[[1]]$`Motif Name`, freq.ls[[3]]$`Motif Name`),]))
+names(df) <- c('id', 'stable.p', 'stable.pct', 'stable.fc', 'id2', 'de.p', 'de.pct', 'de.fc', 'id3', 'in.p', 'in.pct', 'in.fc')
+df <- df[, c(1:4,6:8,10:12)]
+
+top.stable <- freq.ls[[1]]$`Motif Name`[1:20]
+top.in <- freq.ls[[2]]$`Motif Name`[1:20]
+top.de <- freq.ls[[3]]$`Motif Name`[1:20]
+sel <- unique(c(top.stable, top.in, top.de))
+
+
+## Section: clustering
+##################################################
+sel.df <- df[match(sel, df$id),]
+sel.df$id <- unlist(lapply(sel.df$id, function(chr){
+  return(unlist(strsplit(chr, split = "/"))[1])
+}))
+pvalue.df <- data.frame(sel.df[,grep("p$", colnames(sel.df))])
+pct.df <- data.frame(sel.df[, grep("pct", colnames(sel.df))])
+fc.df <- data.frame(sel.df[, grep("fc", colnames(sel.df))])
+rownames(pvalue.df) <- rownames(pct.df) <- rownames(fc.df)  <- sel.df$id
+
+pvalue.df[pvalue.df >200] <- 200
+pheatmap(t(scale(t(pvalue.df))))
+pheatmap(t(scale(t(pct.df))))
+re <- pheatmap(t(scale(t(fc.df))), color = rev(rainbow(256)), border_color = NA)
+
+pdf('results/diffBD-features/HOMER_Motif/Top30.TFs.perCTCFSets.enrichment.heatmap3.pdf', width = 4.5, height = 2)
+#heatmap(t(scale(t(fc.df))), scale = "row", Colv = NA, col = colorRamps::blue2red(256), keysize = 0.1)
+#heatmap(t(scale(t(fc.df))), scale = "row", Colv = NA, col = colorRamps::matlab.like2(256))
+pheatmap(scale(t(fc.df)), cluster_cols = T, cluster_rows = F,angle_col = 45, col = colorRamps::blue2red(256), border_color = NA, fontsize = 4)
+pheatmap(scale(t(fc.df)), cluster_cols = T,cluster_rows = F,angle_col = 45, col = colorRamps::matlab.like2(256), border_color = NA, fontsize = 4)
+#re1 <- heatmap(t(scale(t(fc.df))), scale = "row", Colv = NA)
+
+#heatmap(t(scale(t(pct.df))), scale = "row", Colv = NA, col = colorRamps::blue2red(256))
+#heatmap(t(scale(t(pct.df))), scale = "row", Colv = NA, col = colorRamps::matlab.like2(256))
+#re2 <- heatmap(t(scale(t(pct.df))), scale = "row", Colv = NA)
+pheatmap(scale(t(pct.df)),  cluster_cols = T, cluster_rows = F,angle_col = 45, col = colorRamps::blue2red(256), border_color = NA, fontsize = 4)
+pheatmap(scale(t(pct.df)), cluster_cols = T, cluster_rows = F,angle_col = 45,  col = colorRamps::matlab.like2(256), border_color = NA, fontsize = 4)
+dev.off()
+
+## Section: clean the merged count table
+##################################################
+sub.df <- sel.df[match(c('CTCF(Zf)', 'BORIS(Zf)',
+                         'AP-1(bZIP)', 'BATF(bZIP)', 'JunB(bZIP)', 'Fra2(bZIP)', 'Fosl2(bZIP)',
+                         'Ap4(bHLH)', 'Atoh1(bHLH)', 'MyoG(bHLH)','NeuroD1(bHLH)','MyoD(bHLH)','Myf5(bHLH)'), sel.df$id),]
+sub.df <- data.frame(cbind(id = rep(sub.df$id,3), fc = c(sub.df$stable.fc, sub.df$de.fc, sub.df$in.fc), 
+                           pct = c(sub.df$stable.pct, sub.df$de.pct, sub.df$in.pct), 
+                           type = c(rep('Stable', nrow(sub.df)), rep('Decreased', nrow(sub.df)), rep('Increased', nrow(sub.df)))))
+
+sub.df$type <- factor(sub.df$type, levels = c('Stable', 'Decreased', 'Increased'))
+sub.df$fc <- as.numeric(as.character(sub.df$fc))
+sub.df$pct <- as.numeric(as.character(sub.df$pct))
+sub.df$id <- factor(sub.df$id, levels = sub.df$id[1:13])
+## Section: bubble plot
+##################################################
+
+myPalette <- colorRampPalette(rev(brewer.pal(11, "Spectral")))
+sc <- scale_colour_gradientn(colours = myPalette(100))
+
+fontsize = 8
+linesize = 1
+
+pdf('results/diffBD-features/HOMER_Motif/CaseTF.bubbleplot.pdf', width = 3.5, height = 4)
+ggplot(sub.df, aes(x = type, y = id)) +
+  geom_point(aes(color = pct, size = fc))+ scale_colour_gradientn(colours = colorRamps::blue2red(30))+
+  theme_bw()+ theme(axis.title = element_blank(), text = element_text(size = fontsize))
+dev.off()
+
+
+
+## Section: plot TF enrichment
+##################################################
+sel.df <- df[, c(1,8)]
+sel.df$id <- unlist(lapply(sel.df$id, function(chr){
+  return(unlist(strsplit(chr, split = "/"))[1])
+}))
+colnames(sel.df) <- c('id', 'logP')
+sel.df <- sel.df[order(sel.df$logP, decreasing = T),]
+#sel.df$logP[1:2] <- 500
+sel.df <- sel.df[15:1,]
+
+pdf("results/diffBD-features/HOMER_Motif/CTCF.WT-DMvsWT-GM.upinDM.log2FC1.PValue001_Motif_log10PValue.barplot.pdf", width = 2 , height = 2.5)
+par(mar = c(2,6,2,1))
+barplot(sel.df$logP, horiz = T, names.arg = sel.df$id, las = 1, border = NA,
+        col ='chartreuse3',
+        cex.names = .3, cex.axis = 1.0, xlab = "", 
+        cex.main = .3, axes = F, cex.lab = .3, xlim = c(0,250))
+axis(side = 1, at = seq(0,250,50), labels = seq(0,250,50), tick = T, lwd = 0.5, cex.axis = .3)
+#segments(x0 = -log10(0.05), y0 = 0, x1 = -log10(0.05), y1 = 40, col = 'red', lwd = 4)
+dev.off()
