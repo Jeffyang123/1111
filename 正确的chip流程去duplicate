@@ -1,0 +1,45 @@
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+
+#cd /data/zhangyong/yyp/yypold/chips/lh11_3/data/X101SC20070420-Z01-J003/allcleandata/sam
+source activate rna
+export PATH=$PATH:~/miniconda3/envs/rna/bin
+#mkdir chenalign
+#for i in `ls *.sam`
+#do
+#i=${i/.sam/}
+
+
+#samtools view -@ 10 -q 20 -b -S $i.sam > ./chenalign/${i}.mapQ20.bam
+####yt#samtools view -@ 20 -bS -q 30 -o $line.MAPQ30.bam $line
+
+
+#done
+
+cd /data/zhangyong/yyp/yypold/chips/lh11_3/data/X101SC20070420-Z01-J003/allcleandata/sam/chenalign
+for i in `ls *.bam`
+do
+i=${i/.mapQ20.bam/}
+
+
+#samtools sort -@ 10 -o ${i}.sort.bam   ${i}.mapQ20.bam
+
+###yt#samtools sort -@ 20 $line.MAPQ30.bam -o $line.MAPQ30.sort.bam 
+
+
+###!错误#samtools rmdup -s ${i}.sort.bam ${i}.bam
+
+picard MarkDuplicates INPUT=${i}.sort.bam  OUTPUT=${i}.bam VALIDATION_STRINGENCY=SILENT  REMOVE_DUPLICATES=true METRICS_FILE=${i}.mertrics
+
+
+
+mv ${i}.bam ${i}.sortmk.bam
+
+
+samtools index -@ 20 ${i}.sortmk.bam >${i}.sortmk.bam.bai
+##rm  ${i}.mapQ20.bam
+bamCoverage  --normalizeUsing RPKM -b ${i}.sortmk.bam -o ${i}.bw -p 24;
+done
