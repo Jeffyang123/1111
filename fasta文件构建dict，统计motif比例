@@ -1,0 +1,58 @@
+fasta文件构建dict，统计motif比例
+
+import numpy as np
+import pandas as pd
+import re
+import os
+os.chdir('C:/Users/Administrator/Desktop/peakmoif')
+
+
+file_path = "C:/Users/Administrator/Desktop/peakmoif"
+dirs = os.listdir(file_path)
+
+dicY={}
+dicN={}
+
+
+oupdict=[]
+#ouplst=[]
+for h in dirs:
+    file = file_path + '/' + h
+
+    fl = open(file)
+    dic1= {}
+    chro = fl.readline().strip()    ##.split('-')[1]
+    seq = ''
+    for i in fl:
+        if '>' in i:
+            dic1[chro] = seq
+            chro = i.strip()   ##.split('-')[1]
+            seq = ''
+        else:
+            seq += i.strip()
+    dic1[chro] = seq   #记得最后还要再赋一次值
+    #oupdict.append(dic1)
+    
+    cntg=[]
+    nocntg=[]
+
+    for k,v in dic1.items():
+        print (k)
+        if re.findall(r'ca[a-zA-Z]{2}tg',v,re.I):
+            cntg.append(k)
+        else:
+            nocntg.append(k)
+    dicY[h]=cntg
+    dicN[h]=nocntg
+    
+    
+    
+    
+for m,n in dicY.items():
+    print("The motif numbers of "+m+" is:"+str(len(n)))
+    
+for m,n in dicN.items():
+    print("The NON_motif numbers of "+m+" is:"+str(len(n)))
+
+for m,n in dicN.items():
+    print("The NON_motif ratio(nonmotif/total) of "+m+" is:"+str(len(n)/(len(dicY[m])+len(n))))
