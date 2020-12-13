@@ -1,0 +1,48 @@
+#SampleID	Tissue	Factor	Condition	Treatment	Replicate	bamReads	ControlID	bamControl	Peaks	PeakCaller
+#BT4741	BT474	ER	Resistant	Full-Media	1	reads/Chr18_BT474_ER_1.bam	reads/Chr18_BT474_input.bam	reads/Chr18_BT474_input.bam	peaks/BT474_ER_1.bed.gz	bed
+#BT4742	BT474	ER	Resistant	Full-Media	2	reads/Chr18_BT474_ER_2.bam	reads/Chr18_BT474_input.bam	reads/Chr18_BT474_input.bam	peaks/BT474_ER_2.bed.gz	bed
+
+
+setwd('C:\\Users\\Administrator\\Desktop\\diffbind\\ALLHDNC\\DiffBind_Vignette\\')
+
+
+
+
+
+
+library(BiocParallel)###PC run request
+register(SerialParam())
+
+library(ChIPQC)
+samples = read.csv(file.path(system.file("extdata", package="ChIPQC"), "example_QCexperiment.csv"))
+ samples
+
+
+samples = read.csv("C:\\Users\\Administrator\\Documents\\R\\win-library\\4.0\\ChIPQC\\extdata\\tamoxifenQC.csv") 
+samples
+exampleExp = ChIPQC(samples, annotation = "hg19", chromosome = "chr18")
+ 
+chipObj <- ChIPQC(samples, annotation="hg19")  ##成功！sucess!
+
+
+getwd()
+
+# ChIPQC需要调用BiocParallel，windows用户可能报错，可以先运行一句：register(SerialParam())
+## Create ChIPQC report
+ChIPQCreport(chipObj, reportName="ChIP QC report: Nanog and Pou5f1", reportFolder="ChIPQCreport")
+
+
+
+
+
+####example2 failure
+library(ChIPQC)
+sample2=ChIPQCsample("C:\\Users\\Administrator\\Desktop\\diffbind\\ALLHDNC\\DiffBind_Vignette\\reads\\Chr18_BT474_ER_1.bam")
+sample2  ##failure
+
+
+
+
+
+
+
