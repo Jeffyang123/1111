@@ -1,0 +1,217 @@
+SEchipseq标准流程
+
+#!/bin/bash                 
+cd /mnt/cdisk/users/dgf/chip_yuanlin
+analysis_dir=/mnt/cdisk/users/dgf/chip_yuanlin
+ls *gz | while read id;
+do 
+trim_galore -q 25 --phred33 --length 25 -e 0.1 --stringency 4 -o $analysis_dir/clean  $id; 
+done 
+
+
+#!/bin/bash                 
+source activate rna  
+cd /mnt/cdisk/users/dgf/chip_yuanlin
+ls ./clean/*gz|xargs fastqc -t 10 -o  /mnt/cdisk/users/dgf/chip_yuanlin/qc
+
+
+
+##tobownew
+cd /mnt/cdisk/users/dgf/chip_yuanlin
+mkdir sannew
+bowtie2_index=/home/s312/data/ref/hg19-ucsc/hg19
+ls ./clean/*gz |while read id; 
+do
+echo ${id##*/}
+file=$(basename $id ); sample=${file%%.*}; echo $file $sample; 
+bowtie2 --local  --very-sensitive-local  --no-unal  --no-mixed   --no-discordant  --phred33 -I 10 -X 700 -p 15  -x  $bowtie2_index -U  $id -S /mnt/cdisk/users/dgf/chip_yuanlin/sannew/${id##*/}.sam
+done 
+
+###########
+
+
+##bow
+cd /mnt/cdisk/users/dgf/chip_yuanlin
+bowtie2_index=/home/s312/data/ref/hg19-ucsc/hg19
+ls ./clean/*gz |while read id; 
+do
+echo ${id##*/}
+file=$(basename $id ); sample=${file%%.*}; echo $file $sample; 
+bowtie2 --very-sensitive -p 15  -x  $bowtie2_index -U  $id -S ./sam/${id##*/}.sam
+done 
+
+#!/bin/bash                 
+cd /mnt/cdisk/users/dgf/chip_yuanlin/sam
+mkdir chenalign
+for i in `ls *.sam`
+do
+i=${i/.sam/}
+samtools view -@ 10 -q 30 -b -S $i.sam > ./chenalign/${i}.mapQ30.bam
+done
+
+#!/bin/bash                 
+
+cd /mnt/cdisk/users/dgf/chip_yuanlin/sam/chenalign
+for i in `ls *.sort.bam`
+do
+#cgas_HA_1_S2_R1_001_trimmed.fq.gz.mapQ30.bam
+#i=${i/.mapQ30.bam/}
+i=${i/.sort.bam/}
+#samtools sort -@ 20 -o ${i}.sort.bam   ${i}.mapQ30.bam
+#picard MarkDuplicates INPUT=${i}.sort.bam  OUTPUT=${i}.rm_sort.bam VALIDATION_STRINGENCY=SILENT  REMOVE_DUPLICATES=true METRICS_FILE=${i}.mertrics
+#samtools index -@ 20 ${i}.rm_sort.bam >${i}.rm_sort.bam.bai
+samtools index -@ 20 ${i}.sort.bam >${i}.sort.bam.bai
+#bamCoverage  --normalizeUsing RPKM -b ${i}.rm_sort.bam -o ${i}.bw -p 24;
+bamCoverage  --normalizeUsing RPKM -b ${i}.sort.bam -o ${i}_1.bw -p 24;
+done
+
+##dmcall
+#!/bin/bash                 
+
+
+cd /mnt/cdisk/users/dgf/chip_yuanlin/sam/chenalign
+mkdir peaks
+ls  *.sort.bam |cut -d"." -f 1 |while read id;
+do 
+    if [ ! -s ${id}_summits.bed ];
+    then 
+echo $id 
+#macs2 callpeak -c   cgas_control_S1_R1_001_trimmed.fq.gz.rm_sort.bam -t ${id}.fq.gz.rm_sort.bam -f BAM -B -g hs -n $id --outdir ./peaks  2> $id.log  
+macs2 callpeak -c   cgas_control_S1_R1_001_trimmed.fq.gz.sort.bam -t ${id}.fq.gz.sort.bam -f BAM -B -g hs -n $id --outdir ./peaks  2> $id.log 
+    fi 
+done  
+
+
+
+
+
+
+
+#!/bin/bash
+source activate rna                 
+cd /mnt/cdisk/users/dgf/chip_yuanlin/sannew
+mkdir chenalign
+for i in `ls *.sam`
+do
+i=${i/.sam/}
+samtools view -@ 10 -q 30 -b -S $i.sam > ./chenalign/${i}.mapQ30.bam
+samtools sort -@ 20 -o ./chenalign/${i}.sort.bam   ./chenalign/${i}.mapQ30.bam
+samtools index -@ 20 ./chenalign/${i}.sort.bam >./chenalign/${i}.sort.bam.bai
+#bamCoverage  --normalizeUsing RPKM -b ${i}.rm_sort.bam -o ${i}.bw -p 24;
+bamCoverage  --normalizeUsing RPKM -b ./chenalign/${i}.sort.bam -o ./chenalign/${i}.bw -p 24;
+
+
+
+done
+
+cd /mnt/cdisk/users/dgf/chip_yuanlin/sannew/chenalign
+mkdir peaks
+ls  *.sort.bam |cut -d"." -f 1 |while read id;
+do 
+    if [ ! -s ${id}_summits.bed ];
+    then 
+echo $id 
+#macs2 callpeak -c   cgas_control_S1_R1_001_trimmed.fq.gz.rm_sort.bam -t ${id}.fq.gz.rm_sort.bam -f BAM -B -g hs -n $id --outdir ./peaks  2> $id.log  
+macs2 callpeak -c   cgas_control_S1_R1_001_trimmed.fq.gz.sort.bam -t ${id}.fq.gz.sort.bam   –p 1e-5  –keep-dup  -f BAM -B -g hs -n $id --outdir ./peaks  2> $id.log 
+    fi 
+done  
+
+
+
+
+cd /mnt/cdisk/users/dgf/chip_yuanlin/sannew/chenalign
+#source activate ran
+for i in `ls *.bam`
+do
+echo $i >> ./rmdup
+samtools view -c ${i} >> ./rmdup
+done
+
+cd /data/zhangyong/yyp/yypold/chips/lh11_9/X101SC20070420-Z01/X101SC20070420-Z01-J004/allcleandata/sam/chenalign/NC
+
+for i in `ls *.bam`
+do
+echo $i >> ../count/rmdup
+samtools view -c ${i} >> ../count/rmdup
+done
+
+
+
+统计落在区间reads的数量
+multiBamSummary BED-file --BED selection.bed --bamfiles file1.bam file2.bam -o results.npz
+
+for i in cgas_HA_1_S2_R1_001 cgas_HA_2_S3_R1_001 cgas_control_S1_R1_001
+do
+bedtools map -a $i.bed -b ./chenalign/${i}_trimmed.fq.gz.sort.bam -c 10,10 -o count,concat | awk -v OFS="\t" '{n=length($5);gc=gsub("[gcGC]","", $5); print $1,$2,$3,$4,gc/n}'>$i.txt
+done
+
+
+
+ln -s /data/zhangyong/yyp/yypold/hic/1214hic/X101SC20070420-Z01-J007/2.cleandata/BL_HiC_DM24h_1_6HD_FKDL202617343-1a/rawdata/*  /data/zhangyong/yyp/yypold/hic/1214hic/GMDMhic/data/
+
+
+ln -s /data/zhangyong/yyp/yypold/hic/1214hic/X101SC20070420-Z01-J007/2.cleandata/BL_HiC_DM24h_NC_FKDL202617342-1a/rawdata/* /data/zhangyong/yyp/yypold/hic/1214hic/GMDMhic/data/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#!/bin/bash 
+cd /home/yyp/chip_1chen/chenalign
+mkdir outputpheat
+for i in `ls *.sort.bam`
+do
+i=${i/.sort.bam/}
+
+computeMatrix reference-point  --referencePoint center  -p 15  \
+-b 2000 -a 2000    \
+-R  ./chenpk/${i}_peaks.narrowPeak  \
+-S ${i}.bw  \
+--skipZeros  -o /home/yyp/chip_1chen/chenalign/outputpheat/matrix1_${i}_2K.gz  \
+
+plotHeatmap -m /home/yyp/chip_1chen/chenalign/outputpheat/matrix1_${i}_2K.gz  \
+     -out /home/yyp/chip_1chen/chenalign/outputpheat/matrix1_${i}_2K.png    \
+          --colorMap Oranges_r Blues_r Greens      --whatToShow 'heatmap and colorbar' 
+		  
+plotProfile -m /home/yyp/chip_1chen/chenalign/outputpheat/matrix1_${i}_2K.gz \
+-out matrix1_${i}_Profile1.png \
+--numPlotsPerRow 2 \
+--plotTitle "profile"  
+
+plotCoverage -b ${i}.sort.bam \
+    --plotFile example_coverage \
+    -n 1000000 \
+    --plotTitle "example_coverage" \
+    --outRawCounts coverage.tab \
+    --ignoreDuplicates \
+    --minMappingQuality 10 \
+    --region 19		  
+done
+
+
+
+#!/bin/bash 
+cd /home/yyp/chip_1chen/chenalign
+
+
+multiBamSummary bins -bs 1000 --bamfiles *.sort.bam
+ --extendReads 130 -out treat_results.npz
+ 
+ # 散点图
+ plotCorrelation -in treat_results.npz -o treat_results.png --corMethod spearman -p scatterplot 
+ 
+ # 热图
+ plotCorrelation -in treat_results.npz -o treat_results_heatmap.png --corMethod spearman -p heatmap 
+ 
+ # 主成分分析
+ plotPCA -in treat_results.npz  -o pca.png
+
