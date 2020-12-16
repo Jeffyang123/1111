@@ -1,0 +1,224 @@
+lytPEchipseq流程与deeptools画热图
+
+
+
+
+
+
+
+mkdir -p ../../align/DM24h-NC-1_FKDL202607366-1a
+bowtie2 -p 20  --very-sensitive -x /lustre1/lch3000_pkuhpc/liuyt/genome/Mus_musculus/UCSC/mm9/Sequencetie2Index/genome    -1 /lustre1/lch3000_pkuhpc/liuyt/Ruiting/ChIP/Data-201109/rawdata/DM24h-NC-1_FKDL202607366-1a/DM24h-NC-1_FKDL202607366-1a_1.clean.fq.gz -2 /lustre1/lch3000_pkuhpc/liuyt/Ruiting/ChIP/Data-201109/rawdata/DM24h-NC-1_FKDL202607366-1a/DM24h-NC-1_FKDL202607366-1a_2.clean.fq.gz  -S ../../align/DM24h-NC-1_FKDL202607366-1a/DM24h-NC-1_FKDL202607366-1a.sam &&
+
+
+samtools view -@ 20 -bS  -o ../../align/DM24h-NC-1_FKDL202607366-1a/DM24h-NC-1_FKDL202607366-1a.sam.MAPQ0.bam ../../align/DM24h-NC-1_FKDL202607366-1a/DM24h-NC-1_FKDL202607366-1a.sam && 
+samtools sort -@ 20 ../../align/DM24h-NC-1_FKDL202607366-1a/DM24h-NC-1_FKDL202607366-1a.sam.MAPQ0.bam -o ../../align/DM24h-NC-1_FKDL202607366-1a/DM24h-NC-1_FKDL202607366-1a.sam.MAPQ0.sort.bam &&
+samtools index ../../align/DM24h-NC-1_FKDL202607366-1a/DM24h-NC-1_FKDL202607366-1a.sam.MAPQ0.sort.bam &&
+java -jar /home/lch3000_pkuhpc/lustre1/liuyt/software/picard-tools-1.118/MarkDuplicates.jar INPUT=../../align/DM24h-NC-1_FKDL202607366-1a/DM24h-NC-1_FKDL202607366-1a.sam.MAPQ0.sort.bam OUTPUT=../../align/DM24h-NC-1_FKDL202607366-1a/DM24h-NC-1_FKDL202607366-1a.sam.MAPQ0.sort.rmd.bam VALIDATION_STRINGENCY=SILENT  REMOVE_DUPLICATES=true METRICS_FILE=../../align/DM24h-NC-1_FKDL202607366-1a/DM24h-NC-1_FKDL202607366-1a.metrix  && 
+samtools index ../../align/DM24h-NC-1_FKDL202607366-1a/DM24h-NC-1_FKDL202607366-1a.sam.MAPQ0.sort.rmd.bam
+
+
+
+
+bamCoverage --bam /lustre1/lch3000_pkuhpc/liuyt/Ruiting/ChIP/Data-201109/align/DM24h-NC-1_FKDL202607366-1a/DM24h-NC-1_FKDL202607366-1a.sam.MAPQ0.sort.rmd.bam -o /lustre1/lch3000_pkuhpc/liuyt/Ruiting/ChIP/Data-201109/align/DM24h-NC-1_FKDL202607366-1a/DM24h-NC-1_FKDL202607366-1a.sam.MAPQ0.sort.rmd.bam.RPKM.bw --binSize 1 --normalizeUsing RPKM --extendReads 200  -p 20
+
+
+mkdir -p ../../MACS2/DM24h-NC-1_FKDL202607366-1a_Q001 
+macs2 callpeak -q 0.01 -g mm --nomodel --extsize 200   -n DM24h-NC-1_FKDL202607366-1a -t /lustre1/lch3000_pkuhpc/liuyt/Ruiting/ChIP/Data-201109/align/DM24h-NC-1_FKDL202607366-1a/DM24h-NC-1_FKDL202607366-1a.sam.MAPQ0.sort.rmd.bam -c /lustre1/lch3000_pkuhpc/liuyt/Ruiting/ChIP/Data-201109/align/DM24h-NC-Input_FKDL202607365-1a/DM24h-NC-Input_FKDL202607365-1a.sam.MAPQ0.sort.rmd.bam --outdir ../../MACS2/DM24h-NC-1_FKDL202607366-1a_Q001
+
+
+
+
+
+
+
+
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+source activate rna
+cd /data/zhangyong/yyp/yypold/chips/lh11_9/X101SC20070420-Z01/X101SC20070420-Z01-J004/allcleandata/sam
+mkdir npz
+cd npz
+mkdir outputpheat
+multiBamSummary bins  \
+--bamfiles /data/zhangyong/yyp/yypold/chips/lh11_9/X101SC20070420-Z01/X101SC20070420-Z01-J004/allcleandata/sam/chenalign/16HD/*.bam \
+/data/zhangyong/yyp/yypold/chips/lh11_9/X101SC20070420-Z01/X101SC20070420-Z01-J004/allcleandata/sam/chenalign/NC/*.bam \
+/data/zhangyong/yyp/yypold/chips/lh11_3/data/X101SC20070420-Z01-J003/allcleandata/sam/chenalign/NC/*.bam \
+/data/zhangyong/yyp/yypold/chips/lh11_3/data/X101SC20070420-Z01-J003/allcleandata/sam/chenalign/16HD/*.bam \
+-o results.npz
+
+
+
+
+plotCorrelation -in results.npz --corMethod spearman --skipZeros --plotTitle "Spearman Correlation of Read Counts" --whatToPlot heatmap --colorMap RdYlBu --plotNumbers -o heatmap_SpearmanCorr_readCounts.png --outFileCorMatrix SpearmanCorr_readCounts.tab
+
+
+
+
+
+
+
+
+
+multiBamSummary bins -bs 1000 --bamfiles /data/zhangyong/yyp/yypold/chips/lh11_9/X101SC20070420-Z01/X101SC20070420-Z01-J004/allcleandata/sam/chenalign/16HD/*.bam \
+/data/zhangyong/yyp/yypold/chips/lh11_9/X101SC20070420-Z01/X101SC20070420-Z01-J004/allcleandata/sam/chenalign/NC/*.bam \
+/data/zhangyong/yyp/yypold/chips/lh11_3/data/X101SC20070420-Z01-J003/allcleandata/sam/chenalign/NC/*.bam \
+/data/zhangyong/yyp/yypold/chips/lh11_3/data/X101SC20070420-Z01-J003/allcleandata/sam/chenalign/16HD/*.bam \
+ --extendReads 130 -out treat_results.npz
+ 
+ # 散点图
+ plotCorrelation -in treat_results.npz -o treat_results.png --corMethod spearman -p scatterplot 
+ 
+ # 热图
+ plotCorrelation -in treat_results.npz -o treat_results_heatmap.png --corMethod spearman -p heatmap 
+ 
+ # 主成分分析
+ plotPCA -in treat_results.npz  -o pca.png
+ 
+ 
+
+######计算
+#######画热图
+cd /data/zhangyong/yyp/yypold/chips/lh11_9/X101SC20070420-Z01/X101SC20070420-Z01-J004/allcleandata/sam/chenalign/NC
+for i in `ls *.bam`
+do
+i=${i/.sort.bam/}
+
+computeMatrix reference-point  --referencePoint center  -p 15  \
+-b 2000 -a 2000    \
+-R  ./chenpk/${i}_peaks.narrowPeak  \
+-S ${i}.bw  \
+--skipZeros  -o /data/zhangyong/yyp/yypold/chips/lh11_9/X101SC20070420-Z01/X101SC20070420-Z01-J004/allcleandata/sam/npz/outputpheat/matrix1_${i}_2K.gz  \
+
+plotHeatmap -m /data/zhangyong/yyp/yypold/chips/lh11_9/X101SC20070420-Z01/X101SC20070420-Z01-J004/allcleandata/sam/npz/outputpheat/matrix1_${i}_2K.gz  \
+     -out /data/zhangyong/yyp/yypold/chips/lh11_9/X101SC20070420-Z01/X101SC20070420-Z01-J004/allcleandata/sam/npz/outputpheat/matrix1_${i}_2K.png    \
+          --colorMap Oranges_r Blues_r Greens      --whatToShow 'heatmap and colorbar' 
+		  
+plotProfile -m /data/zhangyong/yyp/yypold/chips/lh11_9/X101SC20070420-Z01/X101SC20070420-Z01-J004/allcleandata/sam/npz/outputpheat/matrix1_${i}_2K.gz \
+-out matrix1_${i}_Profile1.png \
+--numPlotsPerRow 2 \
+--plotTitle "profile"  
+
+plotCoverage -b ${i}.sort.bam \
+    --plotFile example_coverage \
+    -n 1000000 \
+    --plotTitle "example_coverage" \
+    --outRawCounts coverage.tab \
+    --ignoreDuplicates \
+    --minMappingQuality 10 \
+    --region 19		  
+		  
+done
+
+
+
+cd /data/zhangyong/yyp/yypold/chips/lh11_9/X101SC20070420-Z01/X101SC20070420-Z01-J004/allcleandata/sam/chenalign/16HD
+for i in `ls *.bam`
+do
+i=${i/.sort.bam/}
+
+computeMatrix reference-point  --referencePoint center  -p 15  \
+-b 2000 -a 2000    \
+-R  ./chenpk/${i}_peaks.narrowPeak  \
+-S ${i}.bw  \
+--skipZeros  -o /data/zhangyong/yyp/yypold/chips/lh11_9/X101SC20070420-Z01/X101SC20070420-Z01-J004/allcleandata/sam/npz/outputpheat/matrix1_${i}_2K.gz  \
+
+plotHeatmap -m /data/zhangyong/yyp/yypold/chips/lh11_9/X101SC20070420-Z01/X101SC20070420-Z01-J004/allcleandata/sam/npz/outputpheat/matrix1_${i}_2K.gz  \
+     -out /data/zhangyong/yyp/yypold/chips/lh11_9/X101SC20070420-Z01/X101SC20070420-Z01-J004/allcleandata/sam/npz/outputpheat/matrix1_${i}_2K.png    \
+          --colorMap Oranges_r Blues_r Greens      --whatToShow 'heatmap and colorbar' 
+		  
+plotProfile -m /data/zhangyong/yyp/yypold/chips/lh11_9/X101SC20070420-Z01/X101SC20070420-Z01-J004/allcleandata/sam/npz/outputpheat/matrix1_${i}_2K.gz \
+-out matrix1_${i}_Profile1.png \
+--numPlotsPerRow 2 \
+--plotTitle "profile"  
+
+plotCoverage -b ${i}.sort.bam \
+    --plotFile example_coverage \
+    -n 1000000 \
+    --plotTitle "example_coverage" \
+    --outRawCounts coverage.tab \
+    --ignoreDuplicates \
+    --minMappingQuality 10 \
+    --region 19		  
+done
+
+cd /data/zhangyong/yyp/yypold/chips/lh11_3/data/X101SC20070420-Z01-J003/allcleandata/sam/chenalign/NC
+
+for i in `ls *.bam`
+do
+i=${i/.sort.bam/}
+
+computeMatrix reference-point  --referencePoint center  -p 15  \
+-b 2000 -a 2000    \
+-R  ./chenpk/${i}_peaks.narrowPeak  \
+-S ${i}.bw  \
+--skipZeros  -o /data/zhangyong/yyp/yypold/chips/lh11_9/X101SC20070420-Z01/X101SC20070420-Z01-J004/allcleandata/sam/npz/outputpheat/matrix1_${i}_2K.gz  \
+
+plotHeatmap -m /data/zhangyong/yyp/yypold/chips/lh11_9/X101SC20070420-Z01/X101SC20070420-Z01-J004/allcleandata/sam/npz/outputpheat/matrix1_${i}_2K.gz  \
+     -out /data/zhangyong/yyp/yypold/chips/lh11_9/X101SC20070420-Z01/X101SC20070420-Z01-J004/allcleandata/sam/npz/outputpheat/matrix1_${i}_2K.png    \
+          --colorMap Oranges_r Blues_r Greens      --whatToShow 'heatmap and colorbar' 
+
+plotProfile -m /data/zhangyong/yyp/yypold/chips/lh11_9/X101SC20070420-Z01/X101SC20070420-Z01-J004/allcleandata/sam/npz/outputpheat/matrix1_${i}_2K.gz \
+-out matrix1_${i}_Profile1.png \
+--numPlotsPerRow 2 \
+--plotTitle "profile"  
+
+plotCoverage -b ${i}.sort.bam \
+    --plotFile example_coverage \
+    -n 1000000 \
+    --plotTitle "example_coverage" \
+    --outRawCounts coverage.tab \
+    --ignoreDuplicates \
+    --minMappingQuality 10 \
+    --region 19
+
+done
+
+cd /data/zhangyong/yyp/yypold/chips/lh11_3/data/X101SC20070420-Z01-J003/allcleandata/sam/chenalign/16HD
+
+for i in `ls *.bam`
+do
+i=${i/.sort.bam/}
+computeMatrix reference-point  --referencePoint center  -p 15  \
+-b 2000 -a 2000    \
+-R  ./chenpk/${i}_peaks.narrowPeak  \
+-S ${i}.bw  \
+--skipZeros  -o /data/zhangyong/yyp/yypold/chips/lh11_9/X101SC20070420-Z01/X101SC20070420-Z01-J004/allcleandata/sam/npz/outputpheat/matrix1_${i}_2K.gz  \
+
+plotHeatmap -m /data/zhangyong/yyp/yypold/chips/lh11_9/X101SC20070420-Z01/X101SC20070420-Z01-J004/allcleandata/sam/npz/outputpheat/matrix1_${i}_2K.gz  \
+     -out /data/zhangyong/yyp/yypold/chips/lh11_9/X101SC20070420-Z01/X101SC20070420-Z01-J004/allcleandata/sam/npz/outputpheat/matrix1_${i}_2K.png    \
+          --colorMap Oranges_r Blues_r Greens      --whatToShow 'heatmap and colorbar' 
+
+
+plotProfile -m /data/zhangyong/yyp/yypold/chips/lh11_9/X101SC20070420-Z01/X101SC20070420-Z01-J004/allcleandata/sam/npz/outputpheat/matrix1_${i}_2K.gz \
+-out matrix1_${i}_Profile1.png \
+--numPlotsPerRow 2 \
+--plotTitle "profile"  
+
+plotCoverage -b ${i}.sort.bam \
+    --plotFile example_coverage \
+    -n 1000000 \
+    --plotTitle "example_coverage" \
+    --outRawCounts coverage.tab \
+    --ignoreDuplicates \
+    --minMappingQuality 10 \
+    --region 19	 
+done
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
