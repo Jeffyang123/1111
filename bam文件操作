@@ -1,0 +1,839 @@
+bam文件操作
+双端测序数据：
+【bedtools map
+bedtools covarage
+deeptools covarage
+bedtools interest】
+
+有空需要比较一下deeptools covarage  bedtools interest 的统计方法
+bamCoverage【这个可以用循环的办法计算】
+--region CHR:START:END, -r CHR:START:END
+                        Region of the genome to limit the operation to - this is useful when testing parameters to reduce the computing time. The format is chr:start:end, for example --region chr10 or
+                        --region chr10:456700:891000. (default: None)
+
+
+
+
+#BED-file mode（plotENrichment更多功能）
+yyp@DESKTOP-U0COGSO:~/testchipqc/PE$ multiBamSummary BED-file --BED cut.sort.bed --bamfiles DM24h-NC-1chr18.bam  --outRawCounts DM24h-NC 【成功】
+Number of bins found: 9950
+multiBamSummary BED-file --BED cut.sort.bed --bamfiles DM24h-NC-1chr18.bam -out  DM24h-NC-1chr18.npz 
+multiBamSummary BED-file --BED cut.sort.bed --bamfiles DM24h-NC-1chr18.bam   -outRawCounts DM24h-NC-1chr182.npz
+
+
+
+
+
+
+bedtools map -a cut.sort.bed -b DM24h-NC-1chr18.bam -c 10,10 -o count,concat | awk -v OFS="\t" '{n=length($5);gc=gsub("[gcGC]","", $5); print $1,$2,$3,$4,gc/n}'>DM24h-NC-1chr18_method1.txt
+bedtools multicov -bams DM24h-NC-1chr18.bam -bed cut.sort.bed >DM24h-NC-1chr18_method2.txt  (|head)
+bedtools coverage -a cut.sort.bed -b DM24h-NC-1chr18.bam -counts >DM24h-NC-1chr18_method3.txt  覆盖深度是4714
+@@@@实验
+yyp@DESKTOP-U0COGSO:~/testchipqc/PE$ bedtools coverage -a cut.sort.bed -b DM24h-NC-1chr18.bam  |head
+chr18   58915   59137   0       0       222     0.0000000
+chr18   59529   60013   0       0       484     0.0000000
+chr18   3082720 3083454 3       286     734     0.3896458
+chr18   3144014 3144339 0       0       325     0.0000000
+chr18   3152161 3152668 4       253     507     0.4990138
+chr18   3152186 3152421 2       164     235     0.6978723
+chr18   3157950 3158152 1       45      202     0.2227723
+chr18   3211490 3211795 7       305     305     1.0000000
+chr18   3244046 3244418 6       372     372     1.0000000
+chr18   3246984 3247488 5       222     504     0.4404762
+统计结果的输出文件，格式为7列：染色体、区间起始位点、区间结束位点、该区间内的reads数、该区间内的碱基数、区间大小、该区间的平均覆盖度。
+bedtools coverage -a cut.sort.bed -b DM24h-NC-1chr18.bam>DM24h-NC-1chr18_method4.txt
+
+
+bamdst -p cut.sort.bed -o ./bamdstoutput DM24h-NC-1chr18.bam
+
+@@@实践
+
+bedtools intersect -a DM24h-NC-1chr18.bam -b cut.sort.bed >target_reads_method9.bam
+
+plotEnrichment
+​统计样本BED文件中peak或者GTF文件中feature 在chipseq结果中富集情况
+Example
+$ plotEnrichment -b Input.bam H3K4Me1.bam H3K4Me3.bam \
+--BED up.bed down.bed \
+--regionLabels "up regulated" "down regulated" \
+-o enrichment.png
+
+@@@统计
+bedtools intersect -a cut.sort.bed -b DM24h-NC-1chr18.bam |wc -l|awk '{print $1}'  （in peak reads）
+wc -l DM24h-NC-1chr18.bam|awk '{print $1}'  （total）
+
+Reads=97574
+totalReads=273066
+echo '==> FRiP value:' $(bc <<< "scale=2;100*$Reads/$totalReads")'%'
+
+yyp@DESKTOP-U0COGSO:~/testchipqc/PE$ bedtools intersect -a cut.sort.bed -b DM24h-NC-1chr18.bam |wc -l|awk '{print $1}' |head
+97574
+yyp@DESKTOP-U0COGSO:~/testchipqc/PE$ wc -l DM24h-NC-1chr18.bam|awk '{print $1}'
+273066
+yyp@DESKTOP-U0COGSO:~/testchipqc/PE$ echo '==> FRiP value:' $(bc <<< "scale=2;100*$Reads/$totalReads")'%'
+==> FRiP value: 35.73%
+
+22bam文件中提取比对到某个位点的reads
+samtools view -h DM24h-NC-1chr18.bam  "chr18:32907420-32907421"
+samtools view -h DM24h-NC-1chr18.bam  "chr18:32907420-32907421"  > chr13_32907421.sam
+samtools  tview DM24h-NC-1chr18.bam -p "chr18:32907420-32907421"   -d T
+samtools  tview DM24h-NC-1chr18.bam -p "chr18:32907420-32907421"   -d T  > chr13_32907421.text
+
+https://www.jianshu.com/p/05cbc7bd06bc
+统计双端测序比对上的reads数
+samtools view -c -f 1 -F 12 ***.sort.bam
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+方法一：
+
+cd /home/yyp/testchipqc/PE
+for i in DM24h-NC-1chr18.bam; do bedtools map -a NC1_chr18.narrowPeak -b DM24h-NC-1chr18.bam -c 10,10 -o count,concat | awk -v OFS="\t" '{n=length($5);gc=gsub("[gcGC]","", $5); print $1,$2,$3,$4,gc/n}'>$i_method1.txt; done 
+
+
+
+dos2unix *k
+sort -k1,1 -k2,2n NC1_chr18.narrowPeak >NC1_chr18.narrowPeak.sort.bed
+
+awk 'GEGIN{FS="";OFS="\t"}{$1=$1;print$0}' NC1_chr18.narrowPeak.sort.bed> NC1_chr18.sort.bed  ##这句话在这里还没起到作用
+
+
+1、method1
+bedtools map -a cut.sort.bed -b DM24h-NC-1chr18.bam -c 10,10 -o count,concat | awk -v OFS="\t" '{n=length($5);gc=gsub("[gcGC]","", $5); print $1,$2,$3,$4,gc/n}'>DM24h-NC-1chr18_method1.txt
+
+
+2、method2
+ bedtools multicov -bams DM24h-NC-1chr18.bam -bed cut.sort.bed >DM24h-NC-1chr18_method2.txt  (|head)
+ 
+ perl counts.pl cut.sort.bed DM24h-NC-1chr18.bam  >DM24h-NC-1chr18_method2_perl.txt(失败）
+perl counts.pl cut.sort.bed DM24h-NC-1chr18.bam  |head
+
+3、
+#统计reads数据samtools view -c test.bam
+如果我们想知道有多少是mapped,有多少是没有mapped，我们可以通过加上-F 4选项或者-f 4选项。
+我们想知道有多少paired end reads有mate并且都有map时，可以使用-f 1 -F 12来过滤。
+samtools view -c -f 1 -F 12 test.bam
+有了这个记数，我们就可以计算cuffdiff中的FPKM值了。
+
+3、method3
+3-1
+-counts -hist
+bedtools coverage -a cut.sort.bed -b DM24h-NC-1chr18.bam -d |head
+bedtools coverage -a cut.sort.bed -b DM24h-NC-1chr18.bam -counts |head ###
+bedtools coverage -a cut.sort.bed -b DM24h-NC-1chr18.bam -counts >DM24h-NC-1chr18_method3.txt
+bedtools coverage -a cut.sort.bed -b DM24h-NC-1chr18.bam -hist |head
+
+3-2
+samtools bedcov cut.sort.bed DM24h-NC-1chr18.bam |head 
+ 
+#可以看出bedtools给出的覆盖深度是61，samtools给出的覆盖深度是4714，两个之间的差距还是很大的，这其中的原因是什么？
+其实原因很简单，bedtools coverage给出的统计量是目标区域的平均深度。而samtools bedcov给出的统计量是指bed区域内每个碱基深度的加和，如果想要得到实际的平均深度，需要除以bed区域的长度。
+最后值得注意的是，samtools bedcov 会忽略标记为duplicates, QC fail等的reads，但bedtools coverage不会.
+
+
+
+
+
+4\method4
+#bedtools makewindows -g genome.txt -w 10000000 -s 1000000 > windows.bed
+head genome.txt 
+6	174033170
+head windows.bed  
+6	0	10000000
+6	10000000	20000000
+....
+#bedtools makewindows用来自动生成划窗区间。-g genome.txt是要划分的基因组，格式为两列：染色体、染色体长度；-w 10000000为窗口大小为10M；-s 1000000为步长为1M，即窗口在染色体上每次向右平移1M的距离；windows.bed为输出文件，格式为三列：染色体、区间开始位点、区间结束位点。
+
+
+ 2. bedtools coverage -a windows.bed -b xxx.sort.bam > xxx.depth.txt
+
+    #bedtools coverage对划分好的每个滑动窗口进行reads数（depth)的统计。-a windows为上一步划分好的区间；-b xxx.sort.bam为测序数据mapping到参考基因组的比对文件；xxx.depth.txt为统计结果的输出文件，格式为7列：染色体、区间起始位点、区间结束位点、该区间内的reads数、该区间内的碱基数、区间大小、该区间的平均覆盖度。
+
+    #关于xxx.sort.bam文件的几点说明：
+
+    1. 一般将测序数据mapping到参考基因组之后的输出文件为sam文件格式，需要先用samtools view -bS xxx.sam > xxx.bam转换为bam格式
+
+    2.xxx.bam还需要进行排序和建立索引才能用于后续的统计：
+
+    samtools sort xxx.bam xxx.sort   ##输出结果为xxx.sort.bam
+
+    samtools index xxx.sort.bam      ##输出结果为xxx.sort.bam.bai
+@@@@实验
+yyp@DESKTOP-U0COGSO:~/testchipqc/PE$ bedtools coverage -a cut.sort.bed -b DM24h-NC-1chr18.bam  |head
+chr18   58915   59137   0       0       222     0.0000000
+chr18   59529   60013   0       0       484     0.0000000
+chr18   3082720 3083454 3       286     734     0.3896458
+chr18   3144014 3144339 0       0       325     0.0000000
+chr18   3152161 3152668 4       253     507     0.4990138
+chr18   3152186 3152421 2       164     235     0.6978723
+chr18   3157950 3158152 1       45      202     0.2227723
+chr18   3211490 3211795 7       305     305     1.0000000
+chr18   3244046 3244418 6       372     372     1.0000000
+chr18   3246984 3247488 5       222     504     0.4404762
+统计结果的输出文件，格式为7列：染色体、区间起始位点、区间结束位点、该区间内的reads数、该区间内的碱基数、区间大小、该区间的平均覆盖度。
+bedtools coverage -a cut.sort.bed -b DM24h-NC-1chr18.bam>DM24h-NC-1chr18_method4.txt
+
+
+5\method5
+测序深度
+1. samtools depth
+samtools depth DM24h-NC-1chr18.bam |head
+samtools depth DM24h-NC-1chr18.bam > sample.depth
+
+2. samtools mpileup
+samtools mpileup -A  -Q 0 DM24h-NC-1chr18.bam | cut -f1,2,4|sort |head
+samtools mpileup -A  -Q 0 DM24h-NC-1chr18.bam | cut -f1,2,3,4|head
+samtools mpileup -A  -Q 0 DM24h-NC-1chr18.bam | cut -f1,2,4 |head> sample.depth
+3. bdetools genomecov
+bedtools  genomecov -ibam DM24h-NC-1chr18.bam -d |head
+bedtools  genomecov -ibam DM24h-NC-1chr18.bam -d> sample.depth
+
+尽管方法不同，但是输出结果的格式是相同的，示意如下
+第一列是染色体名称，第二列是染色体上的坐标，第三列是对应的测序深度。原本以为计算测序深度就是这么轻松的一件事，但是在比较不同方法的输出结果时，却发现部分区域samtools计算的结果和bedtools的结果对应不上，结果如下
+chr18	143 6 10
+chr18	143 8 16
+
+第三列为samtools软件计算出来的结果，第四列为bedtools软件计算出来的结果，可以看到，【samtools的结果比bedtools少了很多】。
+为了确定这段区域真实的测序深度，将bam文件导入IGV软件之中进行查看，对应区域的结果如下
+从reads来看，确实应该是10和16条，那么samtools计算出来的结果又是什么， 总不可能是sam可以看到，其中有一个SECONDARY比对，对应数字355，这样的reads有4条，去除这4条之后，就是samtools计算的最终结果了。
+
+作为SAM文件的官方操作工具，samtools内置了对flag的过滤， 而bedtools默认没有进行这样的过滤【过滤重复reads】，只是简单统计了该区域比对上的reads数目。tools的bug吧，作为一个应用这个广泛的软件，不可能有如此低级的错误。
+
+
+6\method6
+
+1,samtools depth得到每一个碱基上的测序深度，可以加上bed文件
+samtools depth -b cut.sort.bed DM24h-NC-1chr18.bam |head
+samtools depth -b cut.sort.bed DM24h-NC-1chr18.bam > bedbase_depth.txt (每个碱基
+
+2,
+samtools stats DM24h-NC-1chr18.bam |grep ^SN | cut -f 2-|head  [很好的统计]
+samtools stats DM24h-NC-1chr18.bam |grep ^SN | cut -f 2- > bamstat.txt
+#输出
+raw total sequences:    899520
+filtered sequences:     0
+sequences:      899520
+is sorted:      1
+1st fragments:  452109
+last fragments: 447411
+reads mapped:   899520
+reads mapped and paired:        891892  # paired-end technology bit set + both mates mapped
+reads unmapped: 0
+reads properly paired:  757008  # proper-pair bit set
+
+
+samtools stats DM24h-NC-1chr18.bam > bamstat1.txt
+grep ^SN bamstat1.txt | cut -f 2-
+plot-bamstats -p ./ bamstat1.txt 
+
+
+
+
+7\method7!!!!
+bamdst --help
+USAGE : bamdst [OPTION] -p <probe.bed> -o <output_dir> [in1.bam [in2.bam ... ]]
+or : bamdst [OPTION] -p <probe.bed> -o <output_dir> -
+区域文件和输出目录是必要的，并且需要注意bed的格式，字段与字段之间一定是制表符，几个空格是不对的！
+
+conda install bamdst
+git clone https://github.com/shiquan/bamdst.git
+sudo apt-get install zlib1g-dev libssl-dev
+cd bamdst/
+make
+cd ..
+mkdir bamdstoutput
+bamdst -p cut.sort.bed -o ./bamdstoutput DM24h-NC-1chr18.bam
+
+
+
+
+
+8、
+???????????深度，覆盖度 ，reads数，fragment数？
+reads数计算
+测序深度或者覆盖度（coverage or depth）是指参考序列一个碱基上比对的reads的数目。
+计算公式为：测序深度 = reads长度 × 比对的reads数目 / 参考序列长度
+测序深度
+测序深度 = 测序得到的碱基总个数 / 参考基因组大小
+
+01 fq文件中到底有多少条reads  ：软件readfq来统计
+
+02 有多少reads比对到参考基因组上了？ #bam文件
+这里从比对后得到的BAM文件开始，利用软件samtools中的flagstat 或者idxstats统计
+printf $i >>bam.mappedreads
+  samtools flagstat $i | sed -n '5p'  >>bam.mappedreads
+  或者
+export total_reads=$(samtools idxstats $bam_dir/$sample.final.bam |awk -F '\t' '{s+=$3}END{print s}')
+  echo $sample number_of_reads $total_reads  
+
+03 计算coverage和depth
+这里从比对后得到的BAM文件开始，利用软件统计每个碱基被测序到的次数，再写脚本统计coverage和depth.这里介绍3种方法
+03-1 samtools的mpileup + custome perl ：~4h per WES sample
+利用samtools的mpileup计算每个碱基的测序深度,由于遍历每个reads,所以非常慢,100X的全外样本耗时~4h。Perl脚本计算exon、50bp、100bp、150bp侧翼序列的覆盖度及depth；
+
+03-2 bedtools的genomecov + custome perl: 比samtools快
+#! /bin/bash
+cd bamDIR/  #bam文件所在位置
+ls *.bam >bam.list
+for sample in $(cat bam.list)
+do
+  bedtools genomecov -ibam $bam_dir/$sample -d >$sample.dep_base
+  echo depth_base_is_calculated_for $sample
+done
+03-3 bam2bedGraph + bedtools: 最快
+bam2bedGraph 统计每个碱基的depth，并利用bedtools求overlapped region。
+
+测序深度的计算公式为LN/G，L就是读段长度，N是读段数目，G是基因组大小。
+举例来说，人类基因组3.1G，一个RNA-seq的reads数据为20M，数据为paired-end，读长150bp，那么测序深度就是20M2150/3.1G= 2 X
+
+那我们再来讨论一下sequencing depth 和 sequencing coverage的区别：
+事实上没有区别，若是真要讲个说法，那就是coverage可以理解为检测到全基因组的多少区域（百分比，最大值为100%），但是sequencing covergae指的就是depth of sequencing coverage也就是sequencing depth，反映了一个区域被平均多少个reads检测到。
+另外breadth of coverage需要区别一下，就是将全基因组大小换成target region作为分母计算上面那个公司，
+
+
+9、method9
+输入文件：reads_mapto_genome.sam #SAM格式
+          specific_region.bed #第一列为染色体ID，第二三列分别为起始终止位置 
+           例： 12  21100  41200  #取12号染色体21100-41200区间的序列
+ 
+1. 将reads_mapto_genome.sam转换为BAM格式
+samtools view -Sb  reads_mapto_genome.sam >  reads_mapto_genome.bam
+#bedtools 不支持读入sam格式文件，不知道是否我使用上的问题
+2. 获取指定区域reads
+bedtools intersect -a reads_mapto_genome.bam -b specific_region.bed >target_reads.bam
+@@@实践
+
+bedtools intersect -a DM24h-NC-1chr18.bam -b cut.sort.bed >target_reads_method9.bam
+
+
+10\method10
+
+根据目标区域提取bam信息
+1,
+# 根据bed文件来提取(sort.bam)
+samtools view -hb -L cut.sort.bed  DM24h-NC-1chr18.bam |head
+samtools view -hb -L cut.sort.bed  DM24h-NC-1chr18.bam > target.region10.bam
+2，
+#bedtools
+bedtools intersect -a  DM24h-NC-1chr18.bam  -b cut.sort.bed  > target.region10_1.bam
+
+3,
+#sambamba
+sambamba slice -L cut.sort.bed DM24h-NC-1chr18.bam > target.region10_3.bam
+# sambamba view -L 报错，没有找到原因
+sambamba view -hb chr:start-end  wgs.sort.bam > target.region.bam
+
+
+
+11\method11 计算TPM RPKM
+
+
+1，RPM/CPM
+Reads/Counts of exon model per Million mapped reads (每百万映射读取的reads).
+RPM的计算公式：
+RPM=total exon reads / mapped reads (Millions)
+total exon reads：某个样本mapping到特定基因的外显子上的所有的reads；
+mapped reads (Millions) :某个样本的所有reads总和；
+
+cpm <- t(t(countdata)/colSums(countdata) * 1000000)#参考cpm定义
+avg_cpm <- data.frame(avg_cpm=rowMeans(cpm))
+
+2，
+这样就会使得我们更容易去比较同一个基因在不同样本中所占的read数的比例。而RPKM/FPKM由于最终的表达值矩阵的列和不同，故而不能直接比较同一个基因在不同样本中所占的read数的比例。
+。。。。
+如果你要比较同一个样本(within-sample)不同基因之间的表达情况，你就需要考虑到转录本长度，因为转录本越长，那么检测的片段也会更多，直接比较等于让小孩和大人进行赛跑。如果你是比较不同样本（across sample）同一个基因的表达情况，虽然不必在意转录本长度，但是你要考虑到测序深度（sequence depth)，毕竟测序深度越高，检测到的概率越大。
+
+HTseq-count进行reads计数
+定量分为三个水平:
+基因水平(gene-level)
+转录本水平(transcript-level)
+外显子使用水平(exon-usage-level)。
+
+3，Tpm
+https://www.jianshu.com/p/1940c5954c81
+featureCounts统计counts后的cpm和tpm计算https://www.jianshu.com/p/eece90bdddf9?utm_campaign=maleskine&utm_content=note&utm_medium=seo_notes
+
+
+12、method12
+plotEnrichment
+​统计样本BED文件中peak或者GTF文件中feature 在chipseq结果中富集情况
+Example
+$ plotEnrichment -b Input.bam H3K4Me1.bam H3K4Me3.bam \
+--BED up.bed down.bed \
+--regionLabels "up regulated" "down regulated" \
+-o enrichment.png
+
+
+
+14、method14
+awk ’ { $1=“chr18”;print $0 }’ DM24h-NC-1_FKDL202607366_peaks.narrowPeak > NC1_chr18.narrowPeak 【注意这里输出好像不是table分割的，需要修改一下】
+对bed文件sort
+sort -k1,1 -k2,2n cgas_HA_1_S2_R1_001_trimmed.fq.gz.bed >cgas_HA_1_S2_R1_001_trimmed.fq.gz.sort.bed
+1，对bam提取
+samtools view -bh $BAM chr18 > $BAM.chr18.bam
+2.sort
+samtools sort $BAM | samtools index $BAM
+
+
+15、method15
+统计reads数据
+for i in ls *.bam
+do
+echo $i >> ./rmdup
+samtools view -c ${i} >> ./rmdup
+done
+
+
+16、method16
+#BED-file mode
+multiBamSummary BED-file --BED ${i}_peaks.narrowPeak --bamfiles ${i}.sort.bam -out ${i}_results.npz
+
+cd /data/zhangyong/yyp/yypold/chips/lh11_3/allbed/
+plotEnrichment -b DM24h-16HD-1_FKDL202607369.sort.bam 
+–BED ls *Peak 
+–regionLabels “up regulated” “down regulated” 
+-o enrichment.png
+
+
+17
+
+手把手教你计算FRiP score的值https://blog.csdn.net/weixin_43569478/article/details/108079775
+
+计算比对上参考基因组的reads总数wc -l sample.tn5.shift.tagalign
+计算peak区域的reads总数
+bedtools intersect -a sample.tn5.shift.tagalign -b sample.narrowpeak -wa -u | wc -l
+将两个数相除就得到了FRiP score, 需要注意的是，有些人会纠结fragment和read的概念，对于双端测序而言，一个fragment会产生两条reads, 上述的计算过程是针对fragment进行计数的，和reads数目的计算结果是有出入的。在我看来，FRiP score的核心思想是看peak区域的序列占所有比对上基因组序列的比例，用fragment也是对的，没必要精细到read, 而且用fragment可以同时使用单端和双端测序。
+
+@@@统计
+bedtools intersect -a cut.sort.bed -b DM24h-NC-1chr18.bam |wc -l|awk '{print $1}'  （in peak reads）
+wc -l DM24h-NC-1chr18.bam|awk '{print $1}'  （total）
+
+Reads=97574
+totalReads=273066
+echo '==> FRiP value:' $(bc <<< "scale=2;100*$Reads/$totalReads")'%'
+
+yyp@DESKTOP-U0COGSO:~/testchipqc/PE$ bedtools intersect -a cut.sort.bed -b DM24h-NC-1chr18.bam |wc -l|awk '{print $1}' |head
+97574
+yyp@DESKTOP-U0COGSO:~/testchipqc/PE$ wc -l DM24h-NC-1chr18.bam|awk '{print $1}'
+273066
+yyp@DESKTOP-U0COGSO:~/testchipqc/PE$ echo '==> FRiP value:' $(bc <<< "scale=2;100*$Reads/$totalReads")'%'
+==> FRiP value: 35.73%
+
+
+
+bedtools intersect -a cut.sort.bed -b DM24h-NC-1chr18.bam |wc -l|awk '{print KaTeX parse error: Expected 'EOF', got '}' at position 2: 1}' |head
+
+
+18样品间CHIPseq 信号在基因组上的分布
+bamCompare -b1 Col-1-27_HTA9.aligned_sorted.bam -b2 Col-1-27_Input.aligned_sorted.bam -of bedgraph -o ../Col_1_27_HTA9_input_2.bed -p 40 -bs 100000
+bed = read.table(file="Col_1_27_HTA9_input_2.bed",header = F,sep="\t")
+chr1 = bed[bed$V1=="Chr1",]
+plot(chr1$V2,chr1$V4,type = "l",ylim = c(-1.5,1.5))
+
+
+
+19Read Counts的提取
+1、HTSeq的安装
+
+HTSeq是对有参考基因组的转录组测序数据进行表达量分析的，其输入文件必须有SAM和GTF文件。
+2、GFold：另一个count matrix的提取工具
+gfold count -ann hg19Ref.gtf -tag sample2.sam -o sample2.read_cnt
+此处使用示例bam文件or sam文件和HTSeq的输入文件一致，但是结果出入还是较大的，此处仅作说明，不加以推荐。
+
+3、Bedtools ：再一个count matrix的提取工具
+bedtools multicov -bams 1.bam 2.bam 3.bam 4.bam-bed file.bed > read.count.txt
+# 注意，此处的bed文件需要自己处理得到的，需要四列，第一列为chrN，第二列第三列为基因位置，第四列为基因名。类似于：
+chr1 0   10000   ivl1
+chr1 10000   20000   ivl2
+chr1 20000   30000   ivl3
+chr1 30000   40000   ivl4
+
+
+
+20pysam模块（BAM文件）
+任务需求
+对BAM文件进行分析，提取所有目标序列，并计算仪器检测上下限GC含量的最大值，最少值。
+python pysam.py
+
+
+21pysam操作sam文件
+
+3.读取bam文件
+
+import pysam
+samfile = pysam.AlignmentFile("ex1.bam", "rb")
+提取指定区域reads
+for read in samfile.fetch('chr1', 100, 120):
+     print read
+samfile.close()
+
+
+22bam文件中提取比对到某个位点的reads
+samtools view -h DM24h-NC-1chr18.bam  "chr18:32907420-32907421"
+samtools view -h DM24h-NC-1chr18.bam  "chr18:32907420-32907421"  > chr13_32907421.sam
+samtools  tview DM24h-NC-1chr18.bam -p "chr18:32907420-32907421"   -d T
+samtools  tview DM24h-NC-1chr18.bam -p "chr18:32907420-32907421"   -d T  > chr13_32907421.text
+
+23
+  Use samtools -f 4 to extract all unmapped reads :
+samtools view -b -f 4 DM24h-NC-1chr18.bam  
+samtools view -b -f 4 DM24h-NC-1chr18.bam > file_unmapped.bam
+If you need unmappedpairedR1.fastq (containing only paired  R1 unmapped reads) and unmappedpairedR2.fastq ( containing only paired R2 unmapped reads). Meaning you need all paired reads where at least one of them is unmapped. 
+           Use samtools -F 2 to discard only reads mapped in proper pair:
+
+samtools view -b -F 2 DM24h-NC-1chr18.bam  > file_unmapped.bam 
+
+
+
+3、bedtools multicov.
+
+利用比对的bam文件对每个基因进行read数目计数。
+
+首先注意它需要sort的bam文件及bam的index
+
+bedtools multicov [OPTIONS] -bams BAM1 BAM2 BAM3 … BAMn -bed  <BED/GFF/VCF>
+
+例子：
+
+bedtools multicov -bams aln1.bam aln2.bam aln3.bam -bed interest.bed
+
+interest.bed这个文件是必须的，可能需要自己制作，其实用gtf文件也可以的
+
+chr1 0   10000   gene1
+
+chr1 10000   20000   gene2
+
+chr1 20000   30000   gene3
+
+chr1 30000   40000   gene4
+
+输出结果前三列是坐标，第四列是基因名，跟我们的bed文件一样，只是最后三列是三个样本的计数，是添加上来的！
+
+chr1 0       10000   gene1    100 2234    0
+
+chr1 10000   20000  gene2    123 3245    1000
+
+chr1 20000   30000   gene3    213 2332    2034
+
+chr1 30000   40000   gene4    335 7654    0
+
+ 得到的这个矩阵就可以去用DESeq包来进行差异分析啦！
+
+
+
+
+
+二、BEDTools suite使用详细
+
+
+
+1、intersectBed
+
+用来求两个BED或者BAM文件中的overlap，overlap可以进行自定义是整个genome features的overlap还是局部。 加-wa参数可以报告出原始的在A文件中的feature，加-wb参数可以报告出原始的在B文件中的feature, 加-c参数可以报告出两个文件中的overlap的feature的数量，参数-s可以得到忽略strand的overlap，具体案例如下：
+
+
+
+案例一：包含着染色体位置的两个文件，分别记为A文件和B文件。分别来自于不同文件的染色体位置的交集是什么？
+
+$ cat A.bed
+chr1 10 20
+chr1 30 40
+$ cat B.bed
+chr1 15 25
+$ bedtools intersect -a A.bed -b B.bed 
+chr1 15 20 
+
+案例二：包含着染色体位置的两个文件，分别记为A文件和B文件。求A文件中哪些染色体位置是与文件B中的染色体位置有overlap.
+$ cat A.bed
+ chr1 10 20
+ chr1 30 40
+ $ cat B.bed
+ chr1 15 25
+ $ bedtools intersect -a A.bed -b B.bed -wa
+ chr1 10 20 
+
+案例三：包含着染色体位置的两个文件，分别记为A文件和B文件。求A文件中染色体位置与文件B中染色体位置的交集，以及对应的文件B中的染色体位置.
+ $ cat A.bed
+ chr1 10 20
+ chr1 30 40
+ $ cat B.bed
+ chr1 15 25
+ $ bedtools intersect -a A.bed -b B.bed -wb
+  chr1 15 20 chr1 15 25
+
+案例四（经用）： 包含着染色体位置的两个文件，分别记为A文件和B文件。求对于A文件的染色体位置是否与文件B中的染色体位置有交集。如果有交集，分别输入A文件的染色体位置和B文件的染色体位置；如果没有交集，输入A文件的染色体位置并以'. -1 -1'补齐文件。
+
+$ cat A.bed
+
+chr1 10 20
+chr1 30 40
+$ cat B.bed
+chr1 15 25
+$ bedtools intersect -a A.bed -b B.bed -loj
+chr1 10 20 chr1 15 25
+chr1 30 40 . -1 -1
+
+案例五：  包含着染色体位置的两个文件，分别记为A文件和B文件。对于A文件中染色体位置，如果和B文件中染色体位置有overlap,则输出在A文件中染色体位置和在B文件中染色体位置，以及overlap的长度.
+ $ cat A.bed
+
+chr1 10 20
+
+chr1 30 40
+
+$ cat B.bed
+chr1 15 20
+chr1 18 25
+$ bedtools intersect -a A.bed -b B.bed -wo
+chr1 10 20 chr1 15 20 5
+chr1 10 20 chr1 18 25 2 
+
+案例六：  包含着染色体位置的两个文件，分别记为A文件和B文件。对于A文件中染色体位置，如果和B文件中染色体位置有overlap,则输出在A文件中染色体位置和在B文件中染色体位置，以及overlap的长度；如果和B文件中染色体位置都没有overlap,则用'. -1-1'补齐文件
+
+$ cat A.bed
+chr1 10 20
+chr1 30 40
+$ cat B.bed
+chr1 15 20
+chr1 18 25
+$ bedtools intersect -a A.bed -b B.bed -wao
+chr1 10 20 chr1 15 20 5
+chr1 10 20 chr1 18 25 2 
+chr1 30 40 . -1 -1
+
+ 案例七：  包含着染色体位置的两个文件，分别记为A文件和B文件。对于A文件中染色体位置，输出在A文件中染色体位置和有多少B文件染色体位置与之有overlap.
+
+$ cat A.bed
+ chr1 10 20
+ chr1 30 40
+ $ cat B.bed
+ chr1 15 20
+ chr1 18 25
+ $ bedtools intersect -a A.bed -b B.bed -c
+ chr1 10 20 2
+ chr1 30 40 0 
+
+ 案例八(常用)：  包含着染色体位置的两个文件，分别记为A文件和B文件。对于A文件中染色体位置，输出在A文件中染色体位置和与B文件染色体位置至少有X%的overlap的记录。
+
+$ cat A.bed
+chr1 100 200
+$ cat B.bed
+chr1 130 201
+chr1 180 220
+$ bedtools intersect -a A.bed -b B.bed -f 0.50 -wa -wb  
+chr1 100 200 chr1 130 201 
+
+2、pairToBed
+
+将BED PE或者paired-end的BAM文件与BED文件进行比较，搜索overlaps。默认结果如下图
+
+
+
+图片
+       加-type both报告A中两个end都在B中存在overlap的；
+
+加-type notboth报告A中任一end都在B中存在overlap的； 
+
+加-type ispan报告A的pair是否是横跨B的两侧，
+
+还有类似的-type ospan, -type notispan；
+
+加参数-f可以指定最小的overlap的比例，超过这个比例则报告；
+
+参数-s可以得到忽略strand的
+
+举例：
+
+overlappairToBed -a A.bedpe -b B.bed -type bothpairToBed -a A.bedpe
+
+ -b B.bed -f 0.5pairToBed -abam pairedReads.bam -b simreps.bed -bedpe
+
+3、bedtools multicov.
+
+利用比对的bam文件对每个基因进行read数目计数。
+
+首先注意它需要sort的bam文件及bam的index
+
+bedtools multicov [OPTIONS] -bams BAM1 BAM2 BAM3 … BAMn -bed  <BED/GFF/VCF>
+
+例子：
+
+bedtools multicov -bams aln1.bam aln2.bam aln3.bam -bed interest.bed
+
+interest.bed这个文件是必须的，可能需要自己制作，其实用gtf文件也可以的
+
+chr1 0   10000   gene1
+
+chr1 10000   20000   gene2
+
+chr1 20000   30000   gene3
+
+chr1 30000   40000   gene4
+
+输出结果前三列是坐标，第四列是基因名，跟我们的bed文件一样，只是最后三列是三个样本的计数，是添加上来的！
+
+chr1 0       10000   gene1    100 2234    0
+
+chr1 10000   20000  gene2    123 3245    1000
+
+chr1 20000   30000   gene3    213 2332    2034
+
+chr1 30000   40000   gene4    335 7654    0
+
+ 得到的这个矩阵就可以去用DESeq包来进行差异分析啦！
+
+4.bedtools merge
+
+ 用于合并位于同一个bed/gff/vcf 文件中的重叠区域。
+
+ Bedtools merge  [OPTION] –i <bed/gff/vcf>
+
+-s 必须相同(正负)链的区域才合并（软件默认不考虑正负链特征）
+
+-n 报告合并的区域数量，没有被合并则1
+
+-d 两个独立区域间距小于（等于）该值时将被合并为一个区域
+
+-nms 报告被合并区域的名称
+
+-scores 报告几个被合并特征区域的scores
+
+
+
+
+5、其他
+
+1）pairToPair
+
+比较BEDPE文件搜索overlaps, 类似于pairToBed。
+
+2）bamToBed
+
+将BAM文件转换为BED文件或者BEDPE文件。
+
+bamToBed -i reads.bam
+
+3）windowBed类似于intersectBed, 但是可以指定一个数字，让A中的genome feature增加上下游去和B中的genome features进行overlap。默认情况这个值为1000，可以使用-w加定义，可以用-l指定是上游，用-r指定下游
+
+windowBed -a A.bed -b B.bed -w 5000
+
+windowBed -a A.bed -b B.bed -l 200 -r 20000
+
+4）subtractBed在A中去除掉B中有的genome features
+
+5）coverageBed可以计算深度和覆盖度。如计算基因组任意1Kb的测序read的覆盖度
+
+6）genomeCoverageBed。可以计算给定bam文件在基因组上的覆盖度及每个碱基的深度。
+
+三、软件相关论文：
+
+Quinlan, A.R. & Hall, I.M. BEDTools: a flexible suite of utilities for comparing genomic features. Bioinformatics 26, 841-842 (2010).
+
+
+
+hisat2
+下图是一个mapping的结果总结：
+
+21532571 reads; of these:
+###第一部分
+  21532571 (100.00%) were paired; of these:
+    2112632 (9.81%) aligned concordantly 0 times
+    18862458 (87.60%) aligned concordantly exactly 1 time
+    557481 (2.59%) aligned concordantly >1 times
+###第二部分
+    2112632 pairs aligned concordantly 0 times; of these: （第一步中的第二句）
+      1125562 (53.28%) aligned discordantly 1 time
+###第三部分
+    987070 pairs aligned 0 times concordantly or discordantly; of these:
+      1974140 mates make up the pairs; of these:
+        963856 (48.82%) aligned 0 times
+        950839 (48.16%) aligned exactly 1 time
+        59445 (3.01%) aligned >1 times
+###总的mapping rate
+97.76% overall alignment rate
+总的mapping rate是怎么计算的呢？ 就是把能够mapping上的mate 数目加起来除以所有的mate。比如上面能够mapping上的数目包含：
+
+1. 18862458 *2  # 成对的reads，仅仅mapping了一次，mate的总数乘以2
+2. 557481 *2  # 成对的reads，mapping到了多个地方，mate的数目乘以2
+3. 1125562*2  # 成对的reads， 不合理的mapping到了基因组，且仅仅mapping到了一个位置，mate数目乘以2
+4.950839 # 单个mate，也就是从第三部分中的mate，仅仅mapping到了一个位置，mate的数目就是本身
+5.59445  # 单个mate，也就是从第三部分中的mate，mapping到了多个位置，mate的数目就是本身
+ 
+总的mapping rate 如下：
+
+# 总的mapping rate ： (18862458*2+557481*2+1125562*2+950839+59445)/(21532571*2) =0.9776187
+
+
+
+
+25************unique mapped reads*********
+从贴好的bam文件中读取unique mapped reads，来进行下一步的分析。 
+tophat贴的结果对于非unique的reads会反复出现在bam/sam中，因此不挑unique reads后续结果会不准确。 
+Tophat结果中Unique reads的Quality一栏为255，而BWA贴出的结果此栏会根据reads本身的Phred值变化，因此确定unique的唯一标准是optional fields中的NH:i:1。 
+直接  
+samtools view accepted.bam | grep "\bNH:i:1\b" > accepted_unique.sam 
+即可。其中”\bNH:i:1\b"如果忘记\b，会挑出NH:i:12之类的非unique reads。 
+参考地址: 
+https://www.biostars.org/p/56246/ 
+-q INT only include reads with mapping quality >= INT [0] 
+Like for getting the unique reads (a single read mapping at one best position) 
+命令如下,也有文献报告使用的-q 2
+samtools view -bq 1 file.bam > unique.bam
+就是指唯一比对的reads
+
+现在人们已经开始避免使用unique mapped reads这个概念了，而转向使用mapq值来保留高质量的比对结果。因为mapq值反应了一组比对结果发生的可能性，MapQ = -10 log10(P), 比如结果为10，那就是1/10的概率会出现这个比对结果，如果我们认为0.05%是一个小概率的话，那个mapq值为15就可以用于筛选了, 如果认为0.01%是个小概率的话，mapq值为20就可以用于筛选了。但是人们往往从30这个值开始试起（1/1000的概率），如果它的筛选结果符合你的测序要求，就可以使用它了。如果不行，可以适当的调整这个筛选值。
+
+samtools view -bhS -q 30 input.sam > output.bam
+
+
+
+
+
+
+
+
+
+
+
+
+30***********************怎么从bam文件中提取出比对OR没比对上的paired reads | bamToFastq | STAR*****************
+
+If you need unmappedR1.fastq (containing both paired and unpaired R1 unmapped reads) and unmappedR2.fastq ( containing both paired and unpaired R2 unmapped reads). 
+           Use samtools -f 4 to extract all unmapped reads :
+
+1
+2
+samtools view -b -f 4 file.bam > file_unmapped.bam
+bamToFastq -bam file_unmapped.bam -fq1 unmappedR1.fastq -fq2 unmappedR2.fastq
+　　
+
+If you need unmappedpairedR1.fastq (containing only paired  R1 unmapped reads) and unmappedpairedR2.fastq ( containing only paired R2 unmapped reads). Meaning you need all paired reads where at least one of them is unmapped. 
+           Use samtools -F 2 to discard only reads mapped in proper pair:
+
+1
+2
+samtools view -b -F 2 file.bam > file_unmapped.bam
+bamToFastq -bam file_unmapped.bam -fq1 unmappedpairedR1.fastq -fq2 unmappedpairedR2.fastq
+
+
+
+
+
+31&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+https://www.jianshu.com/p/05cbc7bd06bc
+统计双端测序比对上的reads数
+samtools view -c -f 1 -F 12 ***.sort.bam
+
+
+https://www.jianshu.com/p/e7757fa94624 i-C分析练习（从fastq文件到contact矩阵）
