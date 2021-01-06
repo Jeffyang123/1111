@@ -1,0 +1,115 @@
+
+HIC_callloop代码
+
+
+
+#####merge
+#!/bin/bash
+
+#$ -cwd
+#$ -S /bin/bash
+#$ -l p=10
+#合并，排序，过滤，一步到位的方法
+source activate rna
+
+cd /data/zhangyong/yyp/yypold/hic/hicdata/validpairs/valid
+##cat合并有缺陷
+#LANG=en; sort -T tmp -S 50% -k2,2V -k3,3n -k5,5V -k6,6n -m *DM*Pairs |sort -T tmp -k2,2V -k3,3n -k5,5V -k6,6n | awk -F"\t" 'BEGIN{c1=0;c2=0;s1=0;s2=0}(c1!=2||c2!=2||c2!=5 ||s1!=3||s2!=3||s2!=6){print;c1=2;c2=2;c2=5;s1=3;s2=3;s2=6}' > juicerloop/DM.allValidPairs
+#LANG=en; sort -T tmp -S 50% -k2,2V -k3,3n -k5,5V -k6,6n -m *GM*Pairs |sort -T tmp -k2,2V -k3,3n -k5,5V -k6,6n | awk -F"\t" 'BEGIN{c1=0;c2=0;s1=0;s2=0}(c1!=2||c2!=2||c2!=5 ||s1!=3||s2!=3||s2!=6){print;c1=2;c2=2;c2=5;s1=3;s2=3;s2=6}' > juicerloop/GM.allValidPairs
+###hicpro2juicebox.sh  ###没有设置分辨率的！注意，下面只能独立运行，因为跟合并去重的tmp文件夹同名，导致全部运行错误
+
+for i in GM DM
+do 
+inp=juicerloop/*${i}*irs
+chrsize=mm10
+
+fragmentfile=/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/annotation/mm10haiii.bed
+#/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/bin/utils/hicpro2juicebox.sh -i $inp -g $chrsize -j /data/zhangyong/juicer/scripts/common/juicer_tools.jar [-r /data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/annotation/mm10haiii.bed] -o juicerloop/
+/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/bin/utils/hicpro2juicerbox3k.sh -i $inp -g $chrsize -j /data/zhangyong/juicer/scripts/common/juicer_tools.jar [-r /data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/annotation/mm10haiii.bed] -o juicerloop/
+
+
+done
+
+
+
+####备注：hicpro的分布运行也有merge的功能
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+source activate rna
+cd /data/zhangyong/yyp/yypold/hic/hicdata
+####/data/zhangyong/yyp/yypold/hic/hicdata/outputrna/hic_results/data/WT_DM_BL-HiC_Rep1
+/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/bin/HiC-Pro -i outputrna/hic_results/data/ -o outputrna/ -c config-hicpro.txt -s build_contact_maps【merge....】
+
+
+
+
+#####to2,3khic
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+source activate rna
+cd /data/zhangyong/yyp/yypold/hic/1214hic/X101SC20070420-Z01-J007/GMDMhic/DMhic/hic
+mkdir loophic23k
+
+for i in `ls *.allValidPairs`
+do 
+
+inp=/data/zhangyong/yyp/yypold/hic/1214hic/X101SC20070420-Z01-J007/GMDMhic/DMhic/hic/${i}
+chrsize=mm10
+
+fragmentfile=/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/annotation/mm10haiii.bed
+/data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/bin/utils/hicpro2juicerbox3k.sh -i $inp -g $chrsize -j /data/zhangyong/juicer/scripts/common/juicer_tools.jar [-r /data/zhangyong/yyp/yypold/hic/rnahicprox/HiC-Pro_2.11.4/annotation/mm10haiii.bed] -o loophic23k/
+done
+
+
+
+
+
+
+###call loop
+
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+source activate rna
+RawData_Dir=/data/zhangyong/yyp/yypold/hic/1214hic/X101SC20070420-Z01-J007/GMDMhic/DMhic/hic/loophic23k
+
+cd  $RawData_Dir
+
+#-------------------call loop and apa---------------------------	
+export CUDA_VISIBLE_DEVICES=1
+JUICER=/data/zhangyong/juicer/scripts/common/
+
+for i in `ls *.hic`
+do
+
+#i=basename $i .hic
+i=${i%.*}
+
+mkdir $i
+mkdir ${i}_2
+java -jar ${JUICER}/juicer_tools.jar hiccups --cpu      -m 4096  -c 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,X  -r 3000,5000,10000 -k KR -f 0.1,0.1,0.1 -p 6,4,2 -i 10,7,5 -t 0.02,1.5,1.75,2 -d 15000,20000,50000 ${i}.hic ./$i
+
+java -Xmx8g -jar ${JUICER}/juicer_tools.jar  hiccups  --cpu   -m 1024  -r 2000  -p 6 -i 20 -d 8000 --ignore_sparsity  ${i}.hic  ./${i}_2
+
+cd $i
+mkdir APA
+###merged_loops.bedpe 
+java -jar ${JUICER}/juicer_tools.jar apa -w 5 -u  -r 5000 ../${i}.hic  merged_loops.bedpe ./APA
+cd ..
+
+cd ${i}_2
+mkdir APA
+###merged_loops.bedpe  ####r2000的分辨率在hic文件中没有生成，所以用默认的5K，10K，25K，其中把Y过滤掉
+java -jar ${JUICER}/juicer_tools.jar apa -w 5 -u  -r 2000 ../${i}.hic  merged_loops.bedpe ./APA
+cd ..
+done
+
+
