@@ -1,0 +1,150 @@
+jibocompartment_plot
+
+## Jingbo Gan
+## call AB compartments for matrix from HiC-Pro
+## step1: construct HiTC list object from whole genome contact matrix in triple list format
+## step2: call A/B by pca.hic
+
+## step1 construct HiTC object 
+library(data.table)
+library(HiTC)
+#library(refGenome)
+library(TxDb.Mmusculus.UCSC.mm10.knownGene)
+setwd('C:\\Users\\Administrator\\Desktop\\compartment\\bdg_new')
+
+func <- function(tissue){
+  library(data.table)
+  library(HiTC)
+  library(TxDb.Mmusculus.UCSC.mm10.knownGene)
+  #matrix <- paste0("../HIC",tissue,"_40000_iced.matrix")
+  matrix <- ".bdg/BL_HiC_DM24h_1_6HD_FKDL202617343-1a_150000_iced.matrix"
+  xgi <- ygi <- "./bdg/BL_HiC_DM24h_1_6HD_FKDL202617343-1a_150000_abs.bed"
+  hic <- importC(matrix, xgi, ygi,allPairwise=T)
+  
+  hiC14 <- extractRegion(hic$chr12chr12, chr="chr12", from=82840000, to=94520000)
+  
+  png(paste0("tissue","_chr12-82840000-94520000_40k_heatmap.png"),width = 1400,height = 200)
+  
+  mapC(hiC14, trim.range=.95)
+  
+  #mapC(forceSymmetric(HTClist(hiC14)), trim.range=.95)
+  dev.off()
+  
+  ## step2 extract individual chromosomes interaction maps and call A/B comparments
+  human.genes = genes(TxDb.Mmusculus.UCSC.mm10.knownGene)
+  
+  hic.intra <- hic[isIntraChrom(hic)] ## get all cis maps
+  hic.intra
+  hic.intra <- hic.intra[1:20] # contain chromosome 1-22 and X
+  
+  pca.intra <- lapply(hic.intra, function(xx){
+    pca <- pca.hic(xx, normPerExpected = T, npc = 1, gene.gr = human.genes)
+    return(pca)
+  })
+  
+  compartments <- data.frame(group=character(), group_name=character(), seqnames=character(), start=integer(), end=integer(), width=integer(), strand=character(),
+                             score=double(), genedens=integer(), ccompartments=character(),stringsAsFactors=FALSE)
+  
+  for(i in c(1:19,"X")){
+    chrom <- paste0("chr",i,"chr",i)
+    pca.chrom <- data.frame(pca.intra[chrom])
+    pca.chrom <- pca.chrom[which(pca.chrom[,1] == "1"),]
+    names(pca.chrom) <- c("group","group_name","seqnames","start","end","width","strand","score","genedens","ccompartments")
+    compartments <- rbind(compartments, pca.chrom)
+  }
+  ## step4 save results
+  fwrite(compartments, paste0("tissue","_merged_150_40k_compartments.txt"),
+         sep = '\t', row.names = F, col.names = T, quote = F)
+  
+}
+cl <- makeCluster(9)
+samples <- c("01_CN","01_CT","02_CN","02_CT","02_LT","02_LN","03_CN","03_CT","03_LT","03_NT","04_CN","04_CT","04_LT","05_CN","05_CT","05_LT",
+             "06_CN","06_CT","07_CN","07_CT","08_CN","08_CT","09_CN","09_CT","10_CN","10_CT","11_CN","11_CT","13_CN","13_CT",
+             "13_LT","14_CN","14_CT","14_LT")
+parLapply(cl,samples,func)
+stopCluster(cl)
+
+
+
+
+
+
+
+
+
+#####
+
+
+#第二种脚本
+
+## call AB compartments for matrix from HiC-Pro
+## step1: construct HiTC list object from whole genome contact matrix in triple list format
+## step2: call A/B by pca.hic
+
+
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  +   install.packages("BiocManager")
+
+#BiocManager::install("TxDb.Scerevisiae.UCSC.sacCer3.sgdGene")
+
+## step1 construct HiTC object 
+library(data.table)
+library(HiTC)
+#library(refGenome)
+library(TxDb.Mmusculus.UCSC.mm10.knownGene)
+
+setwd('C:\\Users\\Administrator\\Desktop\\compartment\\bdg_new')
+
+matrix <- "C:/Users/Administrator/Desktop/compartment/bdg_new/bdg/BL_HiC_DM24h_1_6HD_FKDL202617343-1a_150000_iced.matrix" ###need input
+xgi <- ygi <- "C:/Users/Administrator/Desktop/compartment/bdg_new/bdg/BL_HiC_DM24h_1_6HD_FKDL202617343-1a_150000_abs.bed"###need input建立pca.hic矩阵
+
+hic <- importC(matrix, xgi, ygi,allPairwise=T)###importC 导入数据
+
+
+## step2 extract individual chromosomes interaction maps and call A/B comparments
+yeast.genes = genes(TxDb.Mmusculus.UCSC.mm10.knownGene)
+
+hic.intra <- hic[isIntraChrom(hic)] ## get all cis maps
+hic.intra
+hic.intra <- hic.intra[1:20] # contain chromosome 1-20 
+
+pca.intra <- lapply(hic.intra, function(xx){   
+  pca <- pca.hic(xx, normPerExpected = T, npc = 1, gene.gr = yeast.genes)
+  return(pca)
+})###lapply函数是将数据应用到已经创建的函数
+
+compartments <- data.frame(group=character(), group_name=character(), seqnames=character(), start=integer(), end=integer(), width=integer(), strand=character(),
+                           score=double(), genedens=integer(), ccompartments=character(),stringsAsFactors=FALSE)###给compartment设定参数
+
+
+
+
+
+
+
+for(i in c("chr1","chr2","chr3","chr4","chr5","chr6","chr7","chr8","chr9","chr10","chr11","chr12","chr13","chr14","chr15","chr16","chr17","chr18","chr19","chrX")){
+  chrom <- paste0(i,i)
+  pca.chrom <- data.frame(pca.intra[chrom])
+  pca.chrom <- pca.chrom[which(pca.chrom[,1] == "1"),]
+  names(pca.chrom) <- c("group","group_name","seqnames","start","end","width","strand","score","genedens","ccompartments")
+  compartments <- rbind(compartments, pca.chrom)
+}
+
+
+## step4 save results
+fwrite(compartments, paste0("HDjinbo_merged_150k_compartments.txt"),
+       sep = '\t', row.names = F, col.names = T, quote = F)###存储文件
+#}
+
+
+tmp <- read.delim(file = "./HDjinbo_merged_150k_compartments.txt",header = T)
+tmp$score[tmp$score==""]=0
+tmp$score[is.na(tmp$score)] <- 0
+tmp$color <- ifelse(tmp$score>0,"red","blue")
+
+#jpeg(tmp,filename = "./yML100-1.jpg",width = 16,height = 4,units = "in",res=350)
+
+barplot(tmp$score,col = tmp$color, border = tmp$color,ylim = c(-0.04,0.04),ylab = "PC1")
+#dev.off()
+
