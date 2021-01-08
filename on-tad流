@@ -1,0 +1,71 @@
+on-tad流程
+#####直接用juicer dump的dense矩阵（需要标准一下格式才能用于ontad）
+
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+source activate rna
+RawData_Dir=/data/zhangyong/yyp/yypold/hic/1214hic/X101SC20070420-Z01-J007/GMDMhic/DMhic/hic/hi/ontad
+cd  $RawData_Dir
+source activate rna
+python getmatrix.py
+
+
+import os
+
+chrname=[]
+for i in range(1,20):
+    chrname.append(str(i))
+chrname.append("X")
+
+
+#hic="/mnt/hgfs/vmwrae_linux/BL-HiC/Rao_hic_matrix/GSE63525_K562_combined_30.hic"
+#hic="https://hicfiles.s3.amazonaws.com/hiseq/gm12878/in-situ/primary.hic"
+#hic="https://hicfiles.s3.amazonaws.com/hiseq/k562/in-situ/combined.hic"
+hic="/data/zhangyong/yyp/yypold/hic/1214hic/X101SC20070420-Z01-J007/GMDMhic/DMhic/hic/hi/BL_HiC_DM24h_1_6HD_FKDL202617343-1a.allValidPairs.hic"
+outdir="/data/zhangyong/yyp/yypold/hic/1214hic/X101SC20070420-Z01-J007/GMDMhic/DMhic/hic/hi/ontad/"
+juice="java -jar /data/zhangyong/juicer/scripts/common/juicer_tools.jar"
+R="_10000_KR.txt"
+
+for i in chrname:
+    print i
+    os.system(juice+" dump observed NONE -d "+hic+" "+i+" "+i+" BP 10000 "+outdir+"chr"+i+R)
+	
+	
+####从hic_pro的流程生成dense_matrix,首先需要build matrix 和icenorm 生成需要分辨率的矩阵和对应的bed 文件，然后转dense_matrix
+
+source activate rna
+python sparseToDense.py -b /data/zhangyong/yyp/yypold/hic/1214hic/X101SC20070420-Z01-J007/GMDMhic/output/hic_results/matrix/BL_HiC_DM24h_1_6HD_FKDL202617343-1a/raw/20000/BL_HiC_DM24h_1_6HD_FKDL202617343-1a_20000_abs.bed  /data/zhangyong/yyp/yypold/hic/1214hic/X101SC20070420-Z01-J007/GMDMhic/output/hic_results/matrix/BL_HiC_DM24h_1_6HD_FKDL202617343-1a/raw/20000/BL_HiC_DM24h_1_6HD_FKDL202617343-1a_20000.matrix --perchr -o ./output/	
+	
+######第二步是跑ontad的流程	
+
+
+#!/bin/bash                 
+#
+#$ -cwd                     
+#$ -S /bin/bash             
+#$ -l p=10  
+
+
+
+ source activate ontad
+export PATH=/data/zhangyong/miniconda3/envs/ontad/bin:$PATH
+cd /data/zhangyong/yyp/yypold/hic/1214hic/X101SC20070420-Z01-J007/GMDMhic/DMhic/hic/hi/ontad/
+
+mkdir output
+for i in {1..19}
+do
+#/data/zhangyong/yyp/yypold/hic/OnTAD-master/OnTAD   chr${i}_output  -penalty 0.1 -maxsz 200 -o ./output/OnTAD_20_pen0.1_max200_chr${i} 
+#awk 'BEGIN{FS=" ";OFS="\t"}{$1=$1;print$0}' chr${i}_10000_KR.txt >chr${i}  ###这步是从juicer dumn的dense_matrix需要对格式进行标准化一下才用
+/data/zhangyong/yyp/yypold/hic/OnTAD-master/OnTAD   chr${i}  -penalty 0.1 -maxsz 200 -o ./output/10KKR_chr${i} 
+done
+
+for i in X 
+do
+#/data/zhangyong/yyp/yypold/hic/OnTAD-master/OnTAD   chr${i}_output -penalty 0.1 -maxsz 200 -o ./output/OnTAD_20_pen0.1_max200_chr${i}
+#awk 'BEGIN{FS=" ";OFS="\t"}{$1=$1;print$0}' chr${i}_10000_KR.txt >chr${i}   ###这步是从juicer dumn的dense_matrix需要对格式进行标准化一下才用
+/data/zhangyong/yyp/yypold/hic/OnTAD-master/OnTAD   chr${i}  -penalty 0.1 -maxsz 200 -o ./output/10KKR_chr${i} 
+
+done
