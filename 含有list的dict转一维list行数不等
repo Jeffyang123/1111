@@ -1,0 +1,119 @@
+含有list的dict转一维list行数不等
+
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Jan 15 16:19:00 2021
+#######含有list的dict转一维list行数不等
+@author: Administrator
+"""
+
+import numpy as np
+import pandas as pd
+
+import os
+os.chdir('C:/Users/Administrator/Desktop/cuttagpaper/codingGOKEGG(DAVID)/')
+
+#loopoutput
+#tadoutput
+conses=pd.read_csv('./s2s3overlap_gene_1787.txt',sep = '\t',header =None)
+#con=np.array(conses).tolist()
+con=list(conses[0])
+
+##7
+s2=pd.read_csv('./s2_gene.bed',sep = '\t',header =None)
+s3=pd.read_csv('./s3_gene.bed',sep = '\t',header =None)
+
+s2[7]
+s3[7]
+
+
+conses[0].isin(s2[13]) ##可以 对ff的判断有true
+#s2[conses[0].isin(s2[13])] ###可以对gg过滤
+
+p2=s2[s2[13].isin(conses[0])]
+p3=s3[s3[13].isin(conses[0])]
+
+
+##2068
+di={}
+lsi={}
+for i in con:
+    di[i]=[]
+    lsi[i]=[]
+    for s in range(p2.shape[0]):
+        if i==p2.iloc[s,13]:
+            lsi[i].append(list(p2.iloc[s,[0,1,2,7]]))
+            di[i]=[i for item in lsi[i] for i in item]
+
+
+
+
+            
+#for k,v in di.items():
+ #   dii[k]=[i for item in lsi[i] for i in item]
+
+di3={}
+lsi={}
+for i in con:
+    di3[i]=[]
+    lsi[i]=[]
+    for s in range(p3.shape[0]):
+        if i==p3.iloc[s,13]:
+            lsi[i].append(list(p3.iloc[s,[0,1,2,7]]))
+            di3[i]=[i for item in lsi[i] for i in item]
+
+
+
+
+s2dic=di
+s3dic=di3
+
+
+
+my_res=[]
+for key in s2dic:
+    print(key)
+    print(str(key))
+    #print(str(s2dic[key].append(key)))
+    #my_res.append(key.split()+s2dic[key])
+    #my_res.append(str(key)+'\t'+str(s2dic[key]))
+    my_res.append("\t".join(key.split()+list(map(str,s2dic[key]))))
+    
+    
+np.savetxt("kangkangceshi2.txt",my_res,fmt = "%s",delimiter = '\t')
+
+
+l=["dfd","3","45",56]
+l=["dfd","3","45"]
+"\t".join(l)
+a = ['1','2']
+b = list(map(int,a))
+
+list(map(str,s2dic[key]))
+
+####或者
+
+f=[]
+for k,v in di.items():
+    #print(k.split()+v)
+    f.append(k.split()+v)
+  
+ff=pd.DataFrame(f)
+    
+ff.to_csv('s2_p.txt',header=True,index=0)
+    
+  
+    
+f2=[]
+for k,v in di3.items():
+    #print(k.split()+v)
+    f2.append(k.split()+v)
+ff2=pd.DataFrame(f2) 
+ff2.to_csv('s3_p.txt',header=True,index=0)
+
+#np.savetxt('s3_p.txt', f2, fmt="%s", delimiter="\t")
+
+
+
+
+
